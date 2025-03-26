@@ -26,12 +26,14 @@ const RecipeView = () => {
       if (!id) return null;
       return getRecipeById(id);
     },
-    onError: () => {
-      toast({
-        title: "Error loading recipe",
-        description: "There was a problem loading the recipe",
-        variant: "destructive",
-      });
+    meta: {
+      onError: () => {
+        toast({
+          title: "Error loading recipe",
+          description: "There was a problem loading the recipe",
+          variant: "destructive",
+        });
+      }
     }
   });
   

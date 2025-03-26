@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { Recipe, Ingredient, Tag } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,6 +6,12 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
   try {
     const recipeId = uuidv4();
     const now = new Date().toISOString();
+    
+    console.log('Attempting to save recipe to Supabase:', { 
+      id: recipeId, 
+      title: recipe.title,
+      source_url: recipe.sourceUrl
+    });
     
     const { data, error } = await supabase
       .from('recipes')
@@ -35,8 +40,10 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
 
     if (error) {
       console.error('Error saving recipe:', error);
-      return null;
+      throw error;
     }
+
+    console.log('Recipe saved successfully:', data);
 
     // After saving the recipe, update or create tags
     if (recipe.tags && recipe.tags.length > 0) {
@@ -66,7 +73,7 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
     };
   } catch (error) {
     console.error('Error in saveRecipe:', error);
-    return null;
+    throw error;
   }
 }
 

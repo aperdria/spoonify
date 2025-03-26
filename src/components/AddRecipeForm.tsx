@@ -86,13 +86,19 @@ const AddRecipeForm = () => {
     setIsSaving(true);
     
     try {
+      console.log("Preparing to save recipe");
+      
       // Update the recipe with the selected tags
       const recipeToSave = {
         ...extractedRecipe,
         tags: selectedTags
       };
       
+      console.log("Recipe to save:", recipeToSave);
+      
       const savedRecipe = await saveRecipe(recipeToSave);
+      
+      console.log("Save result:", savedRecipe);
       
       if (savedRecipe) {
         toast({
@@ -109,9 +115,12 @@ const AddRecipeForm = () => {
       }
     } catch (error) {
       console.error("Error saving recipe:", error);
+      
       toast({
         title: "Save error",
-        description: "An error occurred while saving the recipe",
+        description: error instanceof Error 
+          ? `Error: ${error.message}`
+          : "An error occurred while saving the recipe",
         variant: "destructive",
       });
     } finally {
