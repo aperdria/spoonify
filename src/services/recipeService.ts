@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabase';
+
+import { supabase } from '@/integrations/supabase/client';
 import { Recipe, Ingredient, Tag } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 

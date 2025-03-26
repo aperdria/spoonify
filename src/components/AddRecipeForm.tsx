@@ -14,6 +14,8 @@ import { extractRecipeFromUrl } from '@/utils/recipeExtractor';
 import { saveRecipe } from '@/services/recipeService';
 import { useQuery } from '@tanstack/react-query';
 import { getAllTags } from '@/services/recipeService';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 
 const AddRecipeForm = () => {
   const [url, setUrl] = useState('');
@@ -22,11 +24,12 @@ const AddRecipeForm = () => {
   const [isExtracted, setIsExtracted] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [extractedRecipe, setExtractedRecipe] = useState<any>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   
   // Fetch tags from Supabase
-  const { data: availableTags = [] } = useQuery({
+  const { data: availableTags = [], error: tagsError } = useQuery({
     queryKey: ['tags'],
     queryFn: getAllTags
   });
@@ -44,6 +47,7 @@ const AddRecipeForm = () => {
     }
     
     setIsLoading(true);
+    setSaveError(null);
     
     try {
       const recipe = await extractRecipeFromUrl(url);
@@ -84,6 +88,7 @@ const AddRecipeForm = () => {
     if (!extractedRecipe) return;
     
     setIsSaving(true);
+    setSaveError(null);
     
     try {
       console.log("Preparing to save recipe");
@@ -116,11 +121,15 @@ const AddRecipeForm = () => {
     } catch (error) {
       console.error("Error saving recipe:", error);
       
+      const errorMessage = error instanceof Error 
+        ? `Error: ${error.message}`
+        : "An error occurred while saving the recipe";
+      
+      setSaveError(errorMessage);
+      
       toast({
         title: "Save error",
-        description: error instanceof Error 
-          ? `Error: ${error.message}`
-          : "An error occurred while saving the recipe",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -177,6 +186,26 @@ const AddRecipeForm = () => {
               </div>
             </div>
             
+            {saveError && (
+              <Alert variant="destructive" className="my-4">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Save Failed</AlertTitle>
+                <AlertDescription>
+                  {saveError}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {tagsError && (
+              <Alert className="my-4">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Warning</AlertTitle>
+                <AlertDescription>
+                  Could not load tags from the database. You can still proceed but tags may not be available.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {isExtracted && extractedRecipe && (
               <div className="space-y-8 animate-fade-in">
                 <div className="space-y-1">
@@ -223,6 +252,7 @@ const AddRecipeForm = () => {
                       setUrl('');
                       setExtractedRecipe(null);
                       setSelectedTags([]);
+                      setSaveError(null);
                     }}
                   >
                     Cancel
