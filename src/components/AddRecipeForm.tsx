@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import TagSelector from '@/components/TagSelector';
 import { Tag } from '@/types';
+import { extractRecipeFromUrl } from '@/utils/recipeExtractor';
 
 // Mock data for now - will be replaced with real functionality
 const MOCK_TAGS: Tag[] = [
@@ -44,19 +45,40 @@ const AddRecipeForm = () => {
     
     setIsLoading(true);
     
-    // This would be a real API call in production
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsExtracted(true);
+    try {
+      const extractedRecipe = await extractRecipeFromUrl(url);
       
-      // Auto-suggest some tags based on extracted content
-      setSelectedTags(['Dinner', 'Italian']);
-      
+      if (extractedRecipe) {
+        setIsExtracted(true);
+        
+        // Auto-suggest some tags based on extracted content
+        if (extractedRecipe.tags && Array.isArray(extractedRecipe.tags)) {
+          setSelectedTags(extractedRecipe.tags);
+        } else {
+          setSelectedTags(['Dinner', 'Italian']);
+        }
+        
+        toast({
+          title: "Recipe extracted",
+          description: "We've successfully extracted the recipe details",
+        });
+      } else {
+        toast({
+          title: "Extraction failed",
+          description: "We couldn't extract the recipe from this URL",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error extracting recipe:", error);
       toast({
-        title: "Recipe extracted",
-        description: "We've successfully extracted the recipe details",
+        title: "Extraction error",
+        description: "An error occurred while extracting the recipe",
+        variant: "destructive",
       });
-    }, 2000);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleSave = () => {

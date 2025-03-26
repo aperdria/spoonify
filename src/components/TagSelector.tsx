@@ -19,7 +19,7 @@ interface TagSelectorProps {
 export function TagSelector({ 
   selectedTags, 
   onChange, 
-  availableTags, 
+  availableTags = [], // Ensure availableTags has a default empty array
   canCreateTags = true,
   maxDisplayed = 5
 }: TagSelectorProps) {
@@ -52,10 +52,13 @@ export function TagSelector({
     }
   };
   
-  const filteredTags = availableTags.filter(tag => 
-    !selectedTags.includes(tag.name) && 
-    tag.name.toLowerCase().includes(inputValue.toLowerCase())
-  );
+  // Make sure filteredTags is always an array, even if availableTags is undefined
+  const filteredTags = Array.isArray(availableTags) 
+    ? availableTags.filter(tag => 
+        !selectedTags.includes(tag.name) && 
+        tag.name.toLowerCase().includes(inputValue.toLowerCase())
+      )
+    : [];
 
   return (
     <div className="w-full">
@@ -141,32 +144,34 @@ export function TagSelector({
               )}
             </CommandEmpty>
             
-            <CommandGroup className="max-h-[200px] overflow-auto">
-              {filteredTags.map(tag => (
-                <CommandItem
-                  key={tag.id}
-                  value={tag.name}
-                  onSelect={() => handleSelect(tag.name)}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center">
-                    <span>{tag.name}</span>
-                    {tag.count > 0 && (
-                      <Badge variant="outline" className="ml-2 text-xs">
-                        {tag.count}
-                      </Badge>
-                    )}
-                  </div>
-                  <Check
-                    size={16}
-                    className={cn(
-                      "ml-auto",
-                      selectedTags.includes(tag.name) ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {filteredTags.length > 0 && (
+              <CommandGroup className="max-h-[200px] overflow-auto">
+                {filteredTags.map(tag => (
+                  <CommandItem
+                    key={tag.id}
+                    value={tag.name}
+                    onSelect={() => handleSelect(tag.name)}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center">
+                      <span>{tag.name}</span>
+                      {tag.count > 0 && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {tag.count}
+                        </Badge>
+                      )}
+                    </div>
+                    <Check
+                      size={16}
+                      className={cn(
+                        "ml-auto",
+                        selectedTags.includes(tag.name) ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
             
             {canCreateTags && inputValue.trim() !== '' && !filteredTags.length && (
               <div className="py-2 px-3 border-t">
