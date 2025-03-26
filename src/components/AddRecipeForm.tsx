@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2, Save } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,25 +11,25 @@ import { useToast } from "@/components/ui/use-toast";
 import TagSelector from '@/components/TagSelector';
 import { Tag } from '@/types';
 import { extractRecipeFromUrl } from '@/utils/recipeExtractor';
-
-// Mock data for now - will be replaced with real functionality
-const MOCK_TAGS: Tag[] = [
-  { id: '1', name: 'Vegetarian', count: 15 },
-  { id: '2', name: 'Dessert', count: 8 },
-  { id: '3', name: 'Quick Meal', count: 12 },
-  { id: '4', name: 'Breakfast', count: 6 },
-  { id: '5', name: 'Italian', count: 9 },
-  { id: '6', name: 'Healthy', count: 14 },
-  { id: '7', name: 'Gluten Free', count: 7 },
-];
+import { saveRecipe } from '@/services/recipeService';
+import { useQuery } from '@tanstack/react-query';
+import { getAllTags } from '@/services/recipeService';
 
 const AddRecipeForm = () => {
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isExtracted, setIsExtracted] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [extractedRecipe, setExtractedRecipe] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Fetch tags from Supabase
+  const { data: availableTags = [] } = useQuery({
+    queryKey: ['tags'],
+    queryFn: getAllTags
+  });
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,16 +46,15 @@ const AddRecipeForm = () => {
     setIsLoading(true);
     
     try {
-      const extractedRecipe = await extractRecipeFromUrl(url);
+      const recipe = await extractRecipeFromUrl(url);
       
-      if (extractedRecipe) {
+      if (recipe) {
+        setExtractedRecipe(recipe);
         setIsExtracted(true);
         
         // Auto-suggest some tags based on extracted content
-        if (extractedRecipe.tags && Array.isArray(extractedRecipe.tags)) {
-          setSelectedTags(extractedRecipe.tags);
-        } else {
-          setSelectedTags(['Dinner', 'Italian']);
+        if (recipe.tags && Array.isArray(recipe.tags)) {
+          setSelectedTags(recipe.tags);
         }
         
         toast({
@@ -81,18 +80,43 @@ const AddRecipeForm = () => {
     }
   };
   
-  const handleSave = () => {
-    // This would save the recipe to storage in production
+  const handleSave = async () => {
+    if (!extractedRecipe) return;
     
-    toast({
-      title: "Recipe saved",
-      description: "Your recipe has been successfully saved",
-    });
+    setIsSaving(true);
     
-    // Navigate to the recipe page
-    setTimeout(() => {
-      navigate('/');
-    }, 500);
+    try {
+      // Update the recipe with the selected tags
+      const recipeToSave = {
+        ...extractedRecipe,
+        tags: selectedTags
+      };
+      
+      const savedRecipe = await saveRecipe(recipeToSave);
+      
+      if (savedRecipe) {
+        toast({
+          title: "Recipe saved",
+          description: "Your recipe has been successfully saved to your collection",
+        });
+        
+        // Navigate to the recipe page
+        setTimeout(() => {
+          navigate(`/recipe/${savedRecipe.id}`);
+        }, 500);
+      } else {
+        throw new Error("Failed to save recipe");
+      }
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+      toast({
+        title: "Save error",
+        description: "An error occurred while saving the recipe",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -144,7 +168,7 @@ const AddRecipeForm = () => {
               </div>
             </div>
             
-            {isExtracted && (
+            {isExtracted && extractedRecipe && (
               <div className="space-y-8 animate-fade-in">
                 <div className="space-y-1">
                   <div className="flex justify-between items-start">
@@ -156,16 +180,15 @@ const AddRecipeForm = () => {
                       <Skeleton className="h-28 w-28 rounded-md flex-shrink-0" /> 
                       
                       <div className="flex-1 space-y-2 pt-1">
-                        <h3 className="font-medium text-lg">Authentic Italian Pasta Carbonara</h3>
+                        <h3 className="font-medium text-lg">{extractedRecipe.title}</h3>
                         <p className="text-sm text-muted-foreground line-clamp-2">
-                          A creamy traditional pasta carbonara with pancetta, eggs, and Parmesan cheese.
-                          Simple ingredients transformed into a luxurious sauce coating perfectly al dente spaghetti.
+                          {extractedRecipe.description}
                         </p>
                         <div className="pt-1">
                           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span>Prep: 15 min</span>
-                            <span>Cook: 20 min</span>
-                            <span>Serves: 4</span>
+                            {extractedRecipe.prepTime && <span>Prep: {extractedRecipe.prepTime} min</span>}
+                            {extractedRecipe.cookTime && <span>Cook: {extractedRecipe.cookTime} min</span>}
+                            <span>Serves: {extractedRecipe.servings}</span>
                           </div>
                         </div>
                       </div>
@@ -178,7 +201,7 @@ const AddRecipeForm = () => {
                   <TagSelector
                     selectedTags={selectedTags}
                     onChange={setSelectedTags}
-                    availableTags={MOCK_TAGS}
+                    availableTags={availableTags || []}
                     canCreateTags={true}
                   />
                 </div>
@@ -189,12 +212,28 @@ const AddRecipeForm = () => {
                     onClick={() => {
                       setIsExtracted(false);
                       setUrl('');
+                      setExtractedRecipe(null);
+                      setSelectedTags([]);
                     }}
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleSave} className="button-glow">
-                    Save Recipe
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={isSaving}
+                    className="button-glow"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 size={16} className="mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save size={16} className="mr-2" />
+                        Save Recipe
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
