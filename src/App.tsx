@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import AddRecipe from "./pages/AddRecipe";
 import RecipeView from "./pages/RecipeView";
 import TagManager from "./pages/TagManager";
+import GroceryBasket from "./pages/GroceryBasket";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/recipe/add" element={<AddRecipe />} />
           <Route path="/recipe/:id" element={<RecipeView />} />
           <Route path="/tags" element={<TagManager />} />
+          <Route path="/basket" element={<GroceryBasket />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

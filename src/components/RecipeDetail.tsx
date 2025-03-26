@@ -9,6 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Recipe } from '@/types';
 import { useToast } from "@/components/ui/use-toast";
+import { addRecipeToBasket } from '@/services/basketService';
+import { translateRecipe } from '@/utils/translator';
+import { useMutation } from '@tanstack/react-query';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -19,9 +22,49 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
   const [servings, setServings] = useState(recipe.servings);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatedData, setTranslatedData] = useState<Partial<Recipe>>(
+    recipe.translatedTitle ? {
+      translatedTitle: recipe.translatedTitle,
+      translatedDescription: recipe.translatedDescription,
+      translatedIngredients: recipe.translatedIngredients,
+      translatedSteps: recipe.translatedSteps
+    } : {}
+  );
   const { toast } = useToast();
   
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+  
+  // Handle translation
+  const handleTranslation = async () => {
+    if (showTranslation) {
+      // Toggle off translation
+      setShowTranslation(false);
+      return;
+    }
+    
+    // Check if we already have translation data
+    if (!recipe.translatedTitle || !recipe.translatedIngredients || !recipe.translatedSteps) {
+      setIsTranslating(true);
+      try {
+        const translation = await translateRecipe(recipe);
+        setTranslatedData(translation);
+        setShowTranslation(true);
+      } catch (error) {
+        console.error("Translation error:", error);
+        toast({
+          title: "Translation failed",
+          description: "Could not translate the recipe content",
+          variant: "destructive",
+        });
+      } finally {
+        setIsTranslating(false);
+      }
+    } else {
+      // We already have translation data
+      setShowTranslation(true);
+    }
+  };
   
   const handleServingChange = (change: number) => {
     const newServings = servings + change;
@@ -30,12 +73,23 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
     }
   };
   
-  const addToBasket = () => {
-    toast({
-      title: "Added to basket",
-      description: `${recipe.title} added with ${servings} servings`,
-    });
-  };
+  // Add to basket mutation
+  const addToBasketMutation = useMutation({
+    mutationFn: () => addRecipeToBasket(recipe.id, recipe, servings),
+    onSuccess: () => {
+      toast({
+        title: "Added to basket",
+        description: `${recipe.title} added with ${servings} servings`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error adding to basket",
+        description: "There was a problem adding this recipe to your basket",
+        variant: "destructive",
+      });
+    }
+  });
   
   const toggleFavorite = () => {
     setIsFavorite(!isFavorite);
@@ -59,6 +113,23 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
   
   // Calculate scale factor for ingredients
   const scale = servings / recipe.servings;
+  
+  // Determine what to show based on translation state
+  const displayTitle = showTranslation && (translatedData.translatedTitle || recipe.translatedTitle) 
+    ? (translatedData.translatedTitle || recipe.translatedTitle) 
+    : recipe.title;
+    
+  const displayDescription = showTranslation && (translatedData.translatedDescription || recipe.translatedDescription)
+    ? (translatedData.translatedDescription || recipe.translatedDescription)
+    : recipe.description;
+    
+  const displayIngredients = showTranslation && (translatedData.translatedIngredients || recipe.translatedIngredients)
+    ? (translatedData.translatedIngredients || recipe.translatedIngredients)
+    : recipe.ingredients;
+    
+  const displaySteps = showTranslation && (translatedData.translatedSteps || recipe.translatedSteps)
+    ? (translatedData.translatedSteps || recipe.translatedSteps)
+    : recipe.steps;
   
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -86,9 +157,9 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
           </div>
           
           <div className="animate-slide-up">
-            <h1 className="text-3xl md:text-4xl font-display font-medium mb-3">{recipe.title}</h1>
+            <h1 className="text-3xl md:text-4xl font-display font-medium mb-3">{displayTitle}</h1>
             
-            <p className="text-muted-foreground mb-4 max-w-3xl">{recipe.description}</p>
+            <p className="text-muted-foreground mb-4 max-w-3xl">{displayDescription}</p>
             
             {/* Recipe meta info */}
             <div className="flex flex-wrap gap-6 mb-6">
@@ -170,10 +241,14 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
               variant={showTranslation ? "default" : "outline"} 
               size="sm" 
               className="gap-1.5"
-              onClick={() => setShowTranslation(!showTranslation)}
+              onClick={handleTranslation}
+              disabled={isTranslating}
             >
               <Languages size={16} />
-              <span>{showTranslation ? "Showing French" : "Show in French"}</span>
+              <span>
+                {isTranslating ? "Translating..." : 
+                  showTranslation ? "Showing French" : "Show in French"}
+              </span>
             </Button>
           </div>
         </div>
@@ -211,10 +286,11 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
               
               <Button 
                 className="w-full gap-2 button-glow" 
-                onClick={addToBasket}
+                onClick={() => addToBasketMutation.mutate()}
+                disabled={addToBasketMutation.isPending}
               >
                 <ShoppingCart size={16} />
-                <span>Add to Basket</span>
+                <span>{addToBasketMutation.isPending ? "Adding..." : "Add to Basket"}</span>
               </Button>
               
               {/* Nutrition Summary */}
@@ -252,57 +328,31 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
               
               <TabsContent value="ingredients" className="animate-fade-in pt-6">
                 <ul className="space-y-2">
-                  {showTranslation && recipe.translatedIngredients ? (
-                    recipe.translatedIngredients.map((ingredient, index) => (
-                      <li key={index} className="flex items-start p-2 border-b last:border-b-0">
-                        <span className="mr-2 mt-0.5">•</span>
-                        <span>
-                          {ingredient.amount && scale !== 1
-                            ? (ingredient.amount * scale).toFixed(1).replace(/\.0$/, '')
-                            : ingredient.amount
-                          } {ingredient.unit} {ingredient.name}
-                          {ingredient.notes && <span className="text-muted-foreground ml-1">({ingredient.notes})</span>}
-                        </span>
-                      </li>
-                    ))
-                  ) : (
-                    recipe.ingredients.map((ingredient, index) => (
-                      <li key={index} className="flex items-start p-2 border-b last:border-b-0">
-                        <span className="mr-2 mt-0.5">•</span>
-                        <span>
-                          {ingredient.amount && scale !== 1
-                            ? (ingredient.amount * scale).toFixed(1).replace(/\.0$/, '')
-                            : ingredient.amount
-                          } {ingredient.unit} {ingredient.name}
-                          {ingredient.notes && <span className="text-muted-foreground ml-1">({ingredient.notes})</span>}
-                        </span>
-                      </li>
-                    ))
-                  )}
+                  {displayIngredients.map((ingredient, index) => (
+                    <li key={index} className="flex items-start p-2 border-b last:border-b-0">
+                      <span className="mr-2 mt-0.5">•</span>
+                      <span>
+                        {ingredient.amount && scale !== 1
+                          ? (ingredient.amount * scale).toFixed(1).replace(/\.0$/, '')
+                          : ingredient.amount
+                        } {ingredient.unit} {ingredient.name}
+                        {ingredient.notes && <span className="text-muted-foreground ml-1">({ingredient.notes})</span>}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
               </TabsContent>
               
               <TabsContent value="instructions" className="animate-fade-in pt-6">
                 <ol className="space-y-4">
-                  {showTranslation && recipe.translatedSteps ? (
-                    recipe.translatedSteps.map((step, index) => (
-                      <li key={index} className="pl-9 relative pb-4">
-                        <span className="absolute left-0 top-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                          {index + 1}
-                        </span>
-                        <p>{step}</p>
-                      </li>
-                    ))
-                  ) : (
-                    recipe.steps.map((step, index) => (
-                      <li key={index} className="pl-9 relative pb-4">
-                        <span className="absolute left-0 top-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                          {index + 1}
-                        </span>
-                        <p>{step}</p>
-                      </li>
-                    ))
-                  )}
+                  {displaySteps.map((step, index) => (
+                    <li key={index} className="pl-9 relative pb-4">
+                      <span className="absolute left-0 top-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                        {index + 1}
+                      </span>
+                      <p>{step}</p>
+                    </li>
+                  ))}
                 </ol>
               </TabsContent>
             </Tabs>

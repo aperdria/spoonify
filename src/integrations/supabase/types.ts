@@ -9,7 +9,203 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      basket_items: {
+        Row: {
+          amount: number | null
+          basket_id: string | null
+          category: string | null
+          checked: boolean | null
+          created_at: string
+          id: string
+          name: string
+          recipe_ids: string[] | null
+          unit: string | null
+        }
+        Insert: {
+          amount?: number | null
+          basket_id?: string | null
+          category?: string | null
+          checked?: boolean | null
+          created_at?: string
+          id?: string
+          name: string
+          recipe_ids?: string[] | null
+          unit?: string | null
+        }
+        Update: {
+          amount?: number | null
+          basket_id?: string | null
+          category?: string | null
+          checked?: boolean | null
+          created_at?: string
+          id?: string
+          name?: string
+          recipe_ids?: string[] | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "basket_items_basket_id_fkey"
+            columns: ["basket_id"]
+            isOneToOne: false
+            referencedRelation: "grocery_baskets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      basket_recipes: {
+        Row: {
+          basket_id: string | null
+          created_at: string
+          id: string
+          original_servings: number
+          recipe_id: string | null
+          servings: number
+        }
+        Insert: {
+          basket_id?: string | null
+          created_at?: string
+          id?: string
+          original_servings: number
+          recipe_id?: string | null
+          servings: number
+        }
+        Update: {
+          basket_id?: string | null
+          created_at?: string
+          id?: string
+          original_servings?: number
+          recipe_id?: string | null
+          servings?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "basket_recipes_basket_id_fkey"
+            columns: ["basket_id"]
+            isOneToOne: false
+            referencedRelation: "grocery_baskets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "basket_recipes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grocery_baskets: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      recipes: {
+        Row: {
+          cook_time: number | null
+          created_at: string
+          description: string
+          id: string
+          image_url: string
+          ingredients: Json
+          nutrition: Json | null
+          prep_time: number | null
+          servings: number
+          source_url: string
+          steps: string[]
+          tags: string[] | null
+          title: string
+          translated_description: string | null
+          translated_ingredients: Json | null
+          translated_steps: string[] | null
+          translated_title: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          cook_time?: number | null
+          created_at?: string
+          description: string
+          id?: string
+          image_url: string
+          ingredients: Json
+          nutrition?: Json | null
+          prep_time?: number | null
+          servings: number
+          source_url: string
+          steps: string[]
+          tags?: string[] | null
+          title: string
+          translated_description?: string | null
+          translated_ingredients?: Json | null
+          translated_steps?: string[] | null
+          translated_title?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          cook_time?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string
+          ingredients?: Json
+          nutrition?: Json | null
+          prep_time?: number | null
+          servings?: number
+          source_url?: string
+          steps?: string[]
+          tags?: string[] | null
+          title?: string
+          translated_description?: string | null
+          translated_ingredients?: Json | null
+          translated_steps?: string[] | null
+          translated_title?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          recipe_count: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          recipe_count?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          recipe_count?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

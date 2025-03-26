@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { Tag as TagIcon, Search, Plus, XCircle, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Tag as TagIcon, Search, Plus, XCircle, ArrowLeft, Filter } from 'lucide-react';
 import Header from '@/components/Header';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,23 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { Separator } from "@/components/ui/separator";
 import { Tag } from '@/types';
-
-// Mock data for development (will be replaced with real storage later)
-const mockTags: Tag[] = [
-  { id: '1', name: 'Vegetarian', count: 3 },
-  { id: '2', name: 'Quick', count: 3 },
-  { id: '3', name: 'Italian', count: 1 },
-  { id: '4', name: 'French', count: 2 },
-  { id: '5', name: 'Healthy', count: 2 },
-  { id: '6', name: 'Breakfast', count: 1 },
-  { id: '7', name: 'Dinner', count: 1 },
-  { id: '8', name: 'Dessert', count: 1 },
-  { id: '9', name: 'Japanese', count: 1 },
-  { id: '10', name: 'Soup', count: 1 },
-  { id: '11', name: 'Pasta', count: 1 },
-  { id: '12', name: 'Chocolate', count: 1 },
-];
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getAllTags } from '@/services/recipeService';
 
 const TagManager = () => {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -34,12 +21,20 @@ const TagManager = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
-  // Initialize with mock data on mount
+  // Fetch tags from the database
+  const { data: fetchedTags = [], isLoading } = useQuery({
+    queryKey: ['tags'],
+    queryFn: getAllTags
+  });
+  
+  // Initialize with fetched data
   useEffect(() => {
-    // In a real app, we would fetch from storage here
-    setTags([...mockTags].sort((a, b) => b.count - a.count));
-  }, []);
+    if (fetchedTags.length > 0) {
+      setTags([...fetchedTags].sort((a, b) => b.count - a.count));
+    }
+  }, [fetchedTags]);
   
   // Filter tags based on search term
   const filteredTags = tags.filter(tag => 
@@ -107,6 +102,11 @@ const TagManager = () => {
       title: "Tag deleted",
       description: `"${tagToDelete.name}" has been deleted`
     });
+  };
+  
+  // Navigate to recipes with the selected tag
+  const viewTagRecipes = (tagName: string) => {
+    navigate(`/?tag=${encodeURIComponent(tagName)}`);
   };
   
   return (
@@ -186,7 +186,12 @@ const TagManager = () => {
               </div>
               
               <div className="grid gap-2">
-                {filteredTags.length > 0 ? (
+                {isLoading ? (
+                  <div className="py-10 text-center">
+                    <div className="animate-spin h-6 w-6 border-4 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
+                    <p className="text-muted-foreground">Loading tags...</p>
+                  </div>
+                ) : filteredTags.length > 0 ? (
                   filteredTags.map(tag => (
                     <div 
                       key={tag.id}
@@ -198,6 +203,17 @@ const TagManager = () => {
                       </div>
                       
                       <div className="flex items-center gap-2">
+                        {tag.count > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 text-muted-foreground"
+                            onClick={() => viewTagRecipes(tag.name)}
+                            title="View recipes with this tag"
+                          >
+                            <Filter size={16} />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
