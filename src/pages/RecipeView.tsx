@@ -26,16 +26,6 @@ const RecipeView = () => {
       if (!id) return null;
       return getRecipeById(id);
     },
-    onSuccess: (data) => {
-      if (!data) {
-        toast({
-          title: "Recipe not found",
-          description: "The recipe you're looking for doesn't exist",
-          variant: "destructive",
-        });
-        navigate('/');
-      }
-    },
     onError: () => {
       toast({
         title: "Error loading recipe",
@@ -44,6 +34,18 @@ const RecipeView = () => {
       });
     }
   });
+  
+  // If recipe is null or undefined after loading, show error and navigate back
+  useEffect(() => {
+    if (!isLoading && !recipe) {
+      toast({
+        title: "Recipe not found",
+        description: "The recipe you're looking for doesn't exist",
+        variant: "destructive",
+      });
+      navigate('/');
+    }
+  }, [recipe, isLoading, toast, navigate]);
   
   return (
     <div className="min-h-screen bg-background">
