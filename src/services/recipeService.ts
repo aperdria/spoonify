@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, Ingredient, Tag } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -15,7 +14,6 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
       source_url: recipe.sourceUrl
     });
     
-    // Insert a single object instead of an array
     const { data, error } = await supabase
       .from('recipes')
       .insert({
@@ -46,12 +44,10 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
 
     console.log('Recipe saved successfully:', data);
 
-    // After saving the recipe, update or create tags
     if (recipe.tags && recipe.tags.length > 0) {
       await updateTags(recipe.tags);
     }
 
-    // Format the response to match our Recipe type
     return {
       id: data.id,
       title: data.title,
@@ -90,7 +86,6 @@ export async function getRecipes(): Promise<Recipe[]> {
       return [];
     }
 
-    // Map from database format to our Recipe type
     return data.map(item => ({
       id: item.id,
       title: item.title,
@@ -156,6 +151,54 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
   }
 }
 
+export async function deleteRecipe(id: string): Promise<boolean> {
+  try {
+    const recipe = await getRecipeById(id);
+    if (!recipe) {
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('recipes')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting recipe:', error);
+      return false;
+    }
+
+    if (recipe.tags && recipe.tags.length > 0) {
+      for (const tagName of recipe.tags) {
+        const { data: tagData } = await supabase
+          .from('tags')
+          .select('*')
+          .eq('name', tagName)
+          .single();
+
+        if (tagData) {
+          if (tagData.recipe_count <= 1) {
+            await supabase
+              .from('tags')
+              .delete()
+              .eq('id', tagData.id);
+          } else {
+            await supabase
+              .from('tags')
+              .update({ recipe_count: tagData.recipe_count - 1 })
+              .eq('id', tagData.id);
+          }
+        }
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in deleteRecipe:', error);
+    return false;
+  }
+}
+
 export async function getAllTags(): Promise<Tag[]> {
   try {
     const { data, error } = await supabase
@@ -181,7 +224,6 @@ export async function getAllTags(): Promise<Tag[]> {
 
 async function updateTags(tagNames: string[]): Promise<void> {
   try {
-    // Get existing tags
     const { data: existingTags, error: fetchError } = await supabase
       .from('tags')
       .select('*')
@@ -194,10 +236,8 @@ async function updateTags(tagNames: string[]): Promise<void> {
 
     const existingTagMap = new Map(existingTags.map(tag => [tag.name, tag]));
     
-    // For each tag name, either update the count or create a new tag
     for (const tagName of tagNames) {
       if (existingTagMap.has(tagName)) {
-        // Update existing tag count
         const tag = existingTagMap.get(tagName)!;
         const { error: updateError } = await supabase
           .from('tags')
@@ -208,7 +248,6 @@ async function updateTags(tagNames: string[]): Promise<void> {
           console.error(`Error updating tag ${tagName}:`, updateError);
         }
       } else {
-        // Create new tag
         const { error: insertError } = await supabase
           .from('tags')
           .insert({
