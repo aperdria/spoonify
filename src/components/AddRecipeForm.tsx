@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ExternalLink, Loader2, Save, AlertCircle } from 'lucide-react';
@@ -72,7 +71,7 @@ const AddRecipeForm = () => {
           toast({
             title: "Extraction incomplete",
             description: "We could only extract limited information. You may need to add details manually.",
-            variant: "warning",
+            variant: "default",
           });
         } else {
           toast({
@@ -204,7 +203,7 @@ const AddRecipeForm = () => {
             </div>
             
             {extractionError && (
-              <Alert variant="warning" className="my-4">
+              <Alert variant="default" className="my-4 border-orange-400 bg-orange-50 text-orange-800">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Extraction Issue</AlertTitle>
                 <AlertDescription className="space-y-2">
