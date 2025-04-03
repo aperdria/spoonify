@@ -15,6 +15,7 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
       source_url: recipe.sourceUrl
     });
     
+    // The issue was here - we need to use the schema column names, not the TypeScript property names
     const { data, error } = await supabase
       .from('recipes')
       .insert({
