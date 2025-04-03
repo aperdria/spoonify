@@ -1,11 +1,10 @@
-
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Book, PlusCircle, Tags, ShoppingCart, Menu, X, ChevronDown 
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Separator } from "@/components/ui/separator";
 import { 
   NavigationMenu,
@@ -22,7 +21,7 @@ import { getCurrentBasket } from '@/services/basketService';
 
 const Header = () => {
   const location = useLocation();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Get basket count

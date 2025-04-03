@@ -1,6 +1,8 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, Ingredient, Tag } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import type { Json } from '@/types/supabase';
 
 export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>): Promise<Recipe | null> {
   try {
@@ -55,17 +57,17 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
       description: data.description,
       imageUrl: data.image_url,
       sourceUrl: data.source_url,
-      tags: data.tags,
-      ingredients: data.ingredients as Ingredient[],
-      steps: data.steps,
+      tags: data.tags as string[],
+      ingredients: data.ingredients as unknown as Ingredient[],
+      steps: data.steps as string[],
       prepTime: data.prep_time || undefined,
       cookTime: data.cook_time || undefined,
       servings: data.servings,
       translatedTitle: data.translated_title || undefined,
       translatedDescription: data.translated_description || undefined,
-      translatedIngredients: data.translated_ingredients as Ingredient[] | undefined,
-      translatedSteps: data.translated_steps || undefined,
-      nutrition: data.nutrition || undefined,
+      translatedIngredients: data.translated_ingredients as unknown as Ingredient[] | undefined,
+      translatedSteps: data.translated_steps as string[] | undefined,
+      nutrition: data.nutrition as unknown as Recipe['nutrition'],
       createdAt: new Date(data.created_at).getTime(),
       updatedAt: new Date(data.updated_at).getTime()
     };
@@ -94,19 +96,19 @@ export async function getRecipes(): Promise<Recipe[]> {
       description: item.description,
       imageUrl: item.image_url,
       sourceUrl: item.source_url,
-      tags: item.tags,
-      ingredients: item.ingredients as Ingredient[],
-      steps: item.steps,
+      tags: item.tags as string[],
+      ingredients: item.ingredients as unknown as Ingredient[],
+      steps: item.steps as string[],
       prepTime: item.prep_time || undefined,
       cookTime: item.cook_time || undefined,
       servings: item.servings,
       translatedTitle: item.translated_title || undefined,
       translatedDescription: item.translated_description || undefined,
-      translatedIngredients: item.translated_ingredients as Ingredient[] | undefined,
-      translatedSteps: item.translated_steps || undefined,
-      nutrition: item.nutrition || undefined,
-      createdAt: new Date(data.created_at).getTime(),
-      updatedAt: new Date(data.updated_at).getTime()
+      translatedIngredients: item.translated_ingredients as unknown as Ingredient[] | undefined,
+      translatedSteps: item.translated_steps as string[] | undefined,
+      nutrition: item.nutrition as unknown as Recipe['nutrition'],
+      createdAt: new Date(item.created_at).getTime(),
+      updatedAt: new Date(item.updated_at).getTime()
     }));
   } catch (error) {
     console.error('Error in getRecipes:', error);
@@ -133,17 +135,17 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
       description: data.description,
       imageUrl: data.image_url,
       sourceUrl: data.source_url,
-      tags: data.tags,
-      ingredients: data.ingredients as Ingredient[],
-      steps: data.steps,
+      tags: data.tags as string[],
+      ingredients: data.ingredients as unknown as Ingredient[],
+      steps: data.steps as string[],
       prepTime: data.prep_time || undefined,
       cookTime: data.cook_time || undefined,
       servings: data.servings,
       translatedTitle: data.translated_title || undefined,
       translatedDescription: data.translated_description || undefined,
-      translatedIngredients: data.translated_ingredients as Ingredient[] | undefined,
-      translatedSteps: data.translated_steps || undefined,
-      nutrition: data.nutrition || undefined,
+      translatedIngredients: data.translated_ingredients as unknown as Ingredient[] | undefined,
+      translatedSteps: data.translated_steps as string[] | undefined,
+      nutrition: data.nutrition as unknown as Recipe['nutrition'],
       createdAt: new Date(data.created_at).getTime(),
       updatedAt: new Date(data.updated_at).getTime()
     };
