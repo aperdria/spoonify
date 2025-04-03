@@ -15,27 +15,27 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
       source_url: recipe.sourceUrl
     });
     
-    // The issue was fixed here - we need to wrap the object in an array since insert expects an array of objects
+    // Insert a single object instead of an array
     const { data, error } = await supabase
       .from('recipes')
-      .insert([{
+      .insert({
         id: recipeId,
         title: recipe.title,
         description: recipe.description,
         image_url: recipe.imageUrl,
         source_url: recipe.sourceUrl,
         tags: recipe.tags,
-        ingredients: recipe.ingredients,
+        ingredients: recipe.ingredients as unknown as Json,
         steps: recipe.steps,
         prep_time: recipe.prepTime || null,
         cook_time: recipe.cookTime || null,
         servings: recipe.servings,
         translated_title: recipe.translatedTitle || null,
         translated_description: recipe.translatedDescription || null,
-        translated_ingredients: recipe.translatedIngredients || null,
+        translated_ingredients: recipe.translatedIngredients as unknown as Json || null,
         translated_steps: recipe.translatedSteps || null,
-        nutrition: recipe.nutrition || null
-      }])
+        nutrition: recipe.nutrition as unknown as Json || null
+      })
       .select()
       .single();
 
