@@ -1,108 +1,178 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Search, PlusCircle, TagIcon, ShoppingCart, Menu, X } from 'lucide-react';
+import { 
+  Book, PlusCircle, Tags, ShoppingCart, Menu, X, ChevronDown 
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { useMobile } from '@/hooks/use-mobile';
+import { Separator } from "@/components/ui/separator";
+import { 
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import { Badge } from '@/components/ui/badge';
+import { useQuery } from '@tanstack/react-query';
+import { getCurrentBasket } from '@/services/basketService';
 
 const Header = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const isMobile = useMobile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Get basket count
+  const { data: basket } = useQuery({
+    queryKey: ['basket-count'],
+    queryFn: getCurrentBasket,
+  });
   
+  const basketRecipeCount = basket?.recipes.length || 0;
+  
+  // Close mobile menu on navigation
   useEffect(() => {
-    setIsMobileMenuOpen(false);
+    setMobileMenuOpen(false);
   }, [location.pathname]);
-
-  const isActive = (path: string) => {
-    return location.pathname === path;
+  
+  // Links configuration
+  const links = [
+    {
+      path: '/',
+      label: 'My Recipes',
+      icon: <Book size={18} className="mr-1" />,
+    },
+    {
+      path: '/recipe/add',
+      label: 'Add Recipe',
+      icon: <PlusCircle size={18} className="mr-1" />,
+    },
+    {
+      path: '/tags',
+      label: 'Tags',
+      icon: <Tags size={18} className="mr-1" />,
+    },
+    {
+      path: '/basket',
+      label: 'Basket',
+      icon: (
+        <div className="relative">
+          <ShoppingCart size={18} className="mr-1" />
+          {basketRecipeCount > 0 && (
+            <Badge 
+              className="absolute -top-2 -right-2 px-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px]"
+              variant="destructive"
+            >
+              {basketRecipeCount}
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+  ];
+  
+  // Check if a link is active
+  const isActiveLink = (path: string) => {
+    if (path === '/' && location.pathname === '/') return true;
+    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    return false;
   };
   
   return (
-    <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${isScrolled ? 'glassmorphism py-2 shadow-sm' : 'bg-transparent py-4'}`}>
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        <Link to="/" className="flex items-center space-x-2 transition-transform duration-300 transform hover:scale-105">
-          <span className="text-primary text-2xl font-display font-bold">Spoonify</span>
-        </Link>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-border h-16 flex items-center">
+      <div className="container px-4 h-full flex justify-between items-center">
+        {/* Logo */}
+        <div>
+          <Link to="/" className="flex items-center">
+            <h1 className="text-xl md:text-2xl font-bold text-foreground cursor-pointer">
+              Cookify
+            </h1>
+          </Link>
+        </div>
         
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
-          <NavLink to="/" isActive={isActive('/')} icon={<Search size={18} />} label="Discover" />
-          <NavLink to="/recipe/add" isActive={isActive('/recipe/add')} icon={<PlusCircle size={18} />} label="Add Recipe" />
-          <NavLink to="/tags" isActive={isActive('/tags')} icon={<TagIcon size={18} />} label="Tags" />
-          <NavLink to="/basket" isActive={isActive('/basket')} icon={<ShoppingCart size={18} />} label="Basket" />
-        </nav>
+        {!isMobile && (
+          <nav className="h-full">
+            <ul className="flex h-full">
+              {links.map((link) => (
+                <li key={link.path} className="h-full">
+                  <Link
+                    to={link.path}
+                    className={`h-full px-4 flex items-center gap-1 border-b-2 transition-colors ${
+                      isActiveLink(link.path)
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-accent'
+                    }`}
+                  >
+                    {link.icon}
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
         
         {/* Mobile Menu Button */}
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="md:hidden"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </Button>
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </Button>
+        )}
       </div>
       
-      {/* Mobile Navigation */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden glassmorphism border-t animate-slide-down">
-          <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <MobileNavLink to="/" isActive={isActive('/')} icon={<Search size={18} />} label="Discover" />
-            <MobileNavLink to="/recipe/add" isActive={isActive('/recipe/add')} icon={<PlusCircle size={18} />} label="Add Recipe" />
-            <MobileNavLink to="/tags" isActive={isActive('/tags')} icon={<TagIcon size={18} />} label="Tags" />
-            <MobileNavLink to="/basket" isActive={isActive('/basket')} icon={<ShoppingCart size={18} />} label="Basket" />
+      {/* Mobile Navigation Drawer */}
+      {isMobile && (
+        <div
+          className={`fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity duration-200 ${
+            mobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className={`fixed top-16 right-0 h-[calc(100vh-4rem)] w-3/4 max-w-sm bg-background shadow-xl transform transition-transform duration-300 ${
+              mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <nav className="p-4 overflow-y-auto h-full">
+              <ul className="space-y-1">
+                {links.map((link) => (
+                  <li key={link.path}>
+                    <Link
+                      to={link.path}
+                      className={`flex items-center p-3 rounded-md ${
+                        isActiveLink(link.path)
+                          ? 'bg-primary/10 text-primary'
+                          : 'hover:bg-accent text-muted-foreground'
+                      }`}
+                    >
+                      {link.icon}
+                      <span>{link.label}</span>
+                      {link.label === 'Basket' && basketRecipeCount > 0 && (
+                        <Badge className="ml-2" variant="default">
+                          {basketRecipeCount}
+                        </Badge>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+                <Separator className="my-4" />
+              </ul>
+            </nav>
           </div>
         </div>
       )}
     </header>
   );
 };
-
-interface NavLinkProps {
-  to: string;
-  isActive: boolean;
-  icon: React.ReactNode;
-  label: string;
-}
-
-const NavLink = ({ to, isActive, icon, label }: NavLinkProps) => (
-  <Link 
-    to={to} 
-    className={`flex items-center space-x-1 py-2 px-1 border-b-2 transition-all duration-300 
-      ${isActive 
-        ? 'border-primary text-primary font-medium' 
-        : 'border-transparent hover:border-primary/50 hover:text-primary/90'}`}
-  >
-    {icon}
-    <span>{label}</span>
-  </Link>
-);
-
-const MobileNavLink = ({ to, isActive, icon, label }: NavLinkProps) => (
-  <Link 
-    to={to} 
-    className={`flex items-center space-x-3 py-3 px-2 rounded-md transition-all duration-200
-      ${isActive 
-        ? 'bg-primary/10 text-primary font-medium' 
-        : 'hover:bg-secondary'}`}
-  >
-    {icon}
-    <span className="text-base">{label}</span>
-  </Link>
-);
 
 export default Header;

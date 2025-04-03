@@ -322,6 +322,38 @@ export async function clearCheckedItems(basketId: string): Promise<boolean> {
   }
 }
 
+// Clear entire basket
+export async function clearBasket(basketId: string): Promise<boolean> {
+  try {
+    // First, delete all basket items
+    const { error: itemsError } = await supabase
+      .from('basket_items')
+      .delete()
+      .eq('basket_id', basketId);
+
+    if (itemsError) {
+      console.error('Error clearing basket items:', itemsError);
+      throw itemsError;
+    }
+
+    // Then delete all basket recipes
+    const { error: recipesError } = await supabase
+      .from('basket_recipes')
+      .delete()
+      .eq('basket_id', basketId);
+
+    if (recipesError) {
+      console.error('Error clearing basket recipes:', recipesError);
+      throw recipesError;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in clearBasket:', error);
+    return false;
+  }
+}
+
 // Determine ingredient category (simple version)
 function determineCategory(ingredientName: string): string {
   const lowerName = ingredientName.toLowerCase();
@@ -337,4 +369,16 @@ function determineCategory(ingredientName: string): string {
   if (/salt|pepper|spice|herb/.test(lowerName)) return 'Spices';
   
   return 'Other';
+}
+
+// Share basket - generate a shareable URL
+export async function shareBasket(basketId: string): Promise<string | null> {
+  try {
+    // In a real implementation, this would create a shareable link via some sharing mechanism
+    // For this demo, we'll just return a mock URL
+    return `${window.location.origin}/shared-basket/${basketId}`;
+  } catch (error) {
+    console.error('Error sharing basket:', error);
+    return null;
+  }
 }

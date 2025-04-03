@@ -73,7 +73,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container pt-24 pb-16 px-4">
+      <main className="container pt-24 pb-16">
         <div className="flex flex-col space-y-8 animate-fade-in">
           {/* Search and filter section */}
           <div className="max-w-3xl mx-auto w-full">
@@ -149,7 +149,7 @@ const Index = () => {
               <p className="text-muted-foreground">Loading recipes...</p>
             </div>
           ) : filteredRecipes.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
               {filteredRecipes.map((recipe) => (
                 <RecipeCard 
                   key={recipe.id} 

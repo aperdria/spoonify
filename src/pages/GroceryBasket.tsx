@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  ShoppingCart, Trash2, Check, ArrowLeft, Plus, Minus, ClipboardCheck, PlusCircle, RefreshCw 
+  ShoppingCart, Trash2, Check, ArrowLeft, Plus, Minus, ClipboardCheck, 
+  PlusCircle, RefreshCw, Search, Share2, Link, X 
 } from 'lucide-react';
 import Header from '@/components/Header';
 import { Button } from "@/components/ui/button";
@@ -20,18 +21,49 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   getCurrentBasket, 
-  removeRecipeFromBasket, 
+  removeRecipeFromBasket,
   updateItemChecked, 
-  clearCheckedItems 
+  clearCheckedItems,
+  clearBasket,
+  shareBasket
 } from '@/services/basketService';
 import { GroceryBasket, GroceryItem } from '@/types';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const GroceryBasketPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'category' | 'recipe'>('category');
   
   // Get current basket
   const { 
@@ -45,7 +77,7 @@ const GroceryBasketPage = () => {
   });
   
   // Group items by category
-  const groupedItems = basket?.items.reduce<Record<string, GroceryItem[]>>((acc, item) => {
+  const groupedItemsByCategory = basket?.items.reduce<Record<string, GroceryItem[]>>((acc, item) => {
     if (!acc[item.category || 'Other']) {
       acc[item.category || 'Other'] = [];
     }
@@ -53,8 +85,22 @@ const GroceryBasketPage = () => {
     return acc;
   }, {}) || {};
   
+  // Group items by recipe
+  const groupedItemsByRecipe = basket?.items.reduce<Record<string, GroceryItem[]>>((acc, item) => {
+    item.recipeIds.forEach(recipeId => {
+      if (!acc[recipeId]) {
+        acc[recipeId] = [];
+      }
+      // Add item to the recipe group if it's not already there
+      if (!acc[recipeId].some(existingItem => existingItem.id === item.id)) {
+        acc[recipeId].push(item);
+      }
+    });
+    return acc;
+  }, {}) || {};
+  
   // Sort categories and filter items by search term
-  const sortedCategories = Object.keys(groupedItems).sort();
+  const sortedCategories = Object.keys(groupedItemsByCategory).sort();
   const filteredItems = basket?.items.filter(item => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
@@ -106,12 +152,76 @@ const GroceryBasketPage = () => {
     }
   });
   
+  // Handle clearing the entire basket
+  const clearBasketMutation = useMutation({
+    mutationFn: (basketId: string) => clearBasket(basketId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['basket'] });
+      toast({
+        title: "Basket cleared",
+        description: "Your basket has been emptied",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to clear basket",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Handle sharing the basket
+  const shareBasketMutation = useMutation({
+    mutationFn: (basketId: string) => shareBasket(basketId),
+    onSuccess: (url) => {
+      if (url) {
+        setShareUrl(url);
+        setShareDialogOpen(true);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to generate share link",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to share basket",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  const handleShareBasket = () => {
+    if (basket?.id) {
+      shareBasketMutation.mutate(basket.id);
+    }
+  };
+  
+  const copyShareLink = () => {
+    if (shareUrl) {
+      navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link copied",
+        description: "Share link copied to clipboard",
+      });
+    }
+  };
+  
   // Check if any items are checked
   const hasCheckedItems = basket?.items.some(item => item.checked) || false;
   
   // Count items by status
   const totalItems = basket?.items.length || 0;
   const checkedItems = basket?.items.filter(item => item.checked).length || 0;
+  
+  // Find recipe by id
+  const findRecipe = (recipeId: string) => {
+    return basket?.recipes.find(recipe => recipe.id === recipeId);
+  };
   
   return (
     <div className="min-h-screen bg-background">
@@ -130,14 +240,64 @@ const GroceryBasketPage = () => {
           </Button>
           
           <Card className="shadow-sm border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <ShoppingCart size={22} />
-                Grocery Basket
-              </CardTitle>
-              <CardDescription>
-                Manage your grocery list and recipe ingredients
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-2xl">
+                  <ShoppingCart size={22} />
+                  Grocery Basket
+                </CardTitle>
+                <CardDescription>
+                  Manage your grocery list and recipe ingredients
+                </CardDescription>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShareBasket}
+                  disabled={!basket || basket.recipes.length === 0 || shareBasketMutation.isPending}
+                >
+                  <Share2 size={16} className="mr-2" />
+                  Share
+                </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive border-destructive hover:bg-destructive/10"
+                      disabled={!basket || basket.recipes.length === 0}
+                    >
+                      <Trash2 size={16} className="mr-2" />
+                      Clear All
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear entire basket?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove all recipes and ingredients from your grocery basket.
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          if (basket?.id) {
+                            clearBasketMutation.mutate(basket.id);
+                          }
+                        }}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        Clear Basket
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </CardHeader>
             
             <CardContent className="space-y-6">
@@ -196,7 +356,21 @@ const GroceryBasketPage = () => {
                   {/* Shopping list */}
                   <div>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-medium">Shopping List ({totalItems} items)</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">Shopping List ({totalItems} items)</h3>
+                        <Select 
+                          value={viewMode} 
+                          onValueChange={(value: 'category' | 'recipe') => setViewMode(value)}
+                        >
+                          <SelectTrigger className="w-[120px] h-8">
+                            <SelectValue placeholder="View by" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="category">By Category</SelectItem>
+                            <SelectItem value="recipe">By Recipe</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       
                       <div className="text-sm text-muted-foreground">
                         {checkedItems} of {totalItems} checked
@@ -289,7 +463,7 @@ const GroceryBasketPage = () => {
                               </div>
                             )}
                           </div>
-                        ) : (
+                        ) : viewMode === 'category' ? (
                           // Categorized view
                           <Accordion type="multiple" defaultValue={sortedCategories} className="space-y-4">
                             {sortedCategories.map(category => (
@@ -298,13 +472,13 @@ const GroceryBasketPage = () => {
                                   <div className="flex items-center gap-2">
                                     <span>{category}</span>
                                     <Badge variant="secondary">
-                                      {groupedItems[category].length}
+                                      {groupedItemsByCategory[category].length}
                                     </Badge>
                                   </div>
                                 </AccordionTrigger>
                                 <AccordionContent>
                                   <div className="space-y-2 py-2">
-                                    {groupedItems[category].map(item => (
+                                    {groupedItemsByCategory[category].map(item => (
                                       <div 
                                         key={item.id}
                                         className={`flex items-center p-2 rounded-md 
@@ -332,6 +506,59 @@ const GroceryBasketPage = () => {
                               </AccordionItem>
                             ))}
                           </Accordion>
+                        ) : (
+                          // Recipe view
+                          <Accordion type="multiple" defaultValue={Object.keys(groupedItemsByRecipe)} className="space-y-4">
+                            {Object.entries(groupedItemsByRecipe).map(([recipeId, items]) => {
+                              const recipe = findRecipe(recipeId);
+                              return (
+                                <AccordionItem 
+                                  value={recipeId} 
+                                  key={recipeId} 
+                                  className="border rounded-md px-3"
+                                >
+                                  <AccordionTrigger className="py-3 hover:no-underline">
+                                    <div className="flex items-center gap-2">
+                                      <span>{recipe ? recipe.title : "Unknown Recipe"}</span>
+                                      <Badge variant="secondary">
+                                        {items.length}
+                                      </Badge>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent>
+                                    <div className="space-y-2 py-2">
+                                      {items.map(item => (
+                                        <div 
+                                          key={item.id}
+                                          className={`flex items-center p-2 rounded-md 
+                                            ${item.checked ? 'bg-muted/50' : ''}`}
+                                        >
+                                          <Checkbox 
+                                            checked={item.checked} 
+                                            onCheckedChange={(checked) => {
+                                              toggleItemMutation.mutate({ 
+                                                itemId: item.id, 
+                                                checked: checked as boolean 
+                                              });
+                                            }}
+                                            className="mr-3"
+                                          />
+                                          <div className="flex-1">
+                                            <span className={item.checked ? 'line-through text-muted-foreground' : ''}>
+                                              {item.amount && <span className="mr-1">{item.amount}</span>}
+                                              {item.unit && <span className="mr-1">{item.unit}</span>}
+                                              {item.name}
+                                            </span>
+                                          </div>
+                                          <Badge variant="outline">{item.category || 'Other'}</Badge>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              );
+                            })}
+                          </Accordion>
                         )}
                       </>
                     ) : (
@@ -345,6 +572,32 @@ const GroceryBasketPage = () => {
               )}
             </CardContent>
           </Card>
+          
+          {/* Share Dialog */}
+          <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Share Your Grocery Basket</DialogTitle>
+                <DialogDescription>
+                  Share this link with others to let them see your grocery list
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="flex items-center gap-2 mt-4">
+                <Input value={shareUrl || ''} readOnly />
+                <Button variant="secondary" onClick={copyShareLink}>
+                  <Link size={14} className="mr-2" />
+                  Copy
+                </Button>
+              </div>
+              
+              <DialogFooter className="mt-4">
+                <Button onClick={() => setShareDialogOpen(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
     </div>

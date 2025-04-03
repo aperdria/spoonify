@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, Ingredient, Tag } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,9 +31,7 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
         translated_description: recipe.translatedDescription || null,
         translated_ingredients: recipe.translatedIngredients || null,
         translated_steps: recipe.translatedSteps || null,
-        nutrition: recipe.nutrition || null,
-        created_at: now,
-        updated_at: now
+        nutrition: recipe.nutrition || null
       })
       .select()
       .single();
@@ -108,8 +105,8 @@ export async function getRecipes(): Promise<Recipe[]> {
       translatedIngredients: item.translated_ingredients as Ingredient[] | undefined,
       translatedSteps: item.translated_steps || undefined,
       nutrition: item.nutrition || undefined,
-      createdAt: new Date(item.created_at).getTime(),
-      updatedAt: new Date(item.updated_at).getTime()
+      createdAt: new Date(data.created_at).getTime(),
+      updatedAt: new Date(data.updated_at).getTime()
     }));
   } catch (error) {
     console.error('Error in getRecipes:', error);

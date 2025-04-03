@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { 
   Clock, Users, BookOpen, Languages, ShoppingCart, 
@@ -7,11 +6,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Recipe } from '@/types';
+import { Recipe, Ingredient } from '@/types';
 import { useToast } from "@/components/ui/use-toast";
 import { addRecipeToBasket } from '@/services/basketService';
 import { translateRecipe } from '@/utils/translator';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -32,6 +31,7 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
     } : {}
   );
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
   
@@ -77,12 +77,14 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
   const addToBasketMutation = useMutation({
     mutationFn: () => addRecipeToBasket(recipe.id, recipe, servings),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['basket'] });
       toast({
         title: "Added to basket",
         description: `${recipe.title} added with ${servings} servings`,
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Error adding to basket:", error);
       toast({
         title: "Error adding to basket",
         description: "There was a problem adding this recipe to your basket",
@@ -124,11 +126,11 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
     : recipe.description;
     
   const displayIngredients = showTranslation && (translatedData.translatedIngredients || recipe.translatedIngredients)
-    ? (translatedData.translatedIngredients || recipe.translatedIngredients)
+    ? (translatedData.translatedIngredients || recipe.translatedIngredients || [])
     : recipe.ingredients;
     
   const displaySteps = showTranslation && (translatedData.translatedSteps || recipe.translatedSteps)
-    ? (translatedData.translatedSteps || recipe.translatedSteps)
+    ? (translatedData.translatedSteps || recipe.translatedSteps || [])
     : recipe.steps;
   
   return (

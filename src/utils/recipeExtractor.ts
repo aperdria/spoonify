@@ -1,8 +1,8 @@
 
 import { Recipe, Ingredient } from '@/types';
 
-// This is a mock implementation for now
-// In a real app, this would use an API to extract recipe data from a URL
+// This function extracts recipes from URLs using a mock implementation
+// In a real application, this would use an API to extract recipe data
 
 export async function extractRecipeFromUrl(url: string): Promise<Recipe | null> {
   try {
@@ -43,6 +43,74 @@ export async function extractRecipeFromUrl(url: string): Promise<Recipe | null> 
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
+    
+    // For demonstration purposes, let's vary the returned recipe based on the URL
+    if (url.includes('chocolate') || url.includes('cake')) {
+      mockRecipe.title = "Triple Chocolate Cake";
+      mockRecipe.description = "A rich and decadent triple chocolate cake that's perfect for special occasions. This cake features layers of moist chocolate cake with creamy chocolate ganache.";
+      mockRecipe.tags = ["Dessert", "Chocolate", "Baking"];
+      mockRecipe.ingredients = [
+        { name: "all-purpose flour", amount: 2, unit: "cups" },
+        { name: "granulated sugar", amount: 1.5, unit: "cups" },
+        { name: "unsweetened cocoa powder", amount: 3/4, unit: "cup" },
+        { name: "baking soda", amount: 2, unit: "tsp" },
+        { name: "baking powder", amount: 1.5, unit: "tsp" },
+        { name: "salt", amount: 1, unit: "tsp" },
+        { name: "eggs", amount: 2, unit: "large" },
+        { name: "milk", amount: 1, unit: "cup" },
+        { name: "vegetable oil", amount: 1/2, unit: "cup" },
+        { name: "vanilla extract", amount: 2, unit: "tsp" },
+        { name: "boiling water", amount: 1, unit: "cup" },
+        { name: "dark chocolate", amount: 200, unit: "g", notes: "for ganache" },
+        { name: "heavy cream", amount: 1, unit: "cup", notes: "for ganache" },
+      ];
+      mockRecipe.steps = [
+        "Preheat oven to 350°F (175°C). Grease and flour two 9-inch cake pans.",
+        "In a large bowl, whisk together flour, sugar, cocoa powder, baking soda, baking powder, and salt.",
+        "Add eggs, milk, oil, and vanilla. Beat with mixer on medium speed for 2 minutes.",
+        "Stir in boiling water (batter will be thin). Pour into prepared pans.",
+        "Bake for 30-35 minutes or until a toothpick inserted comes out clean.",
+        "Cool in pans for 10 minutes, then remove to wire racks to cool completely.",
+        "For ganache, heat cream until just simmering. Pour over chopped chocolate and let sit for 5 minutes. Stir until smooth.",
+        "When cake is cool, spread ganache between layers and over top and sides of cake."
+      ];
+      mockRecipe.prepTime = 30;
+      mockRecipe.cookTime = 35;
+      mockRecipe.imageUrl = "https://images.unsplash.com/photo-1578985545062-69928b1d9587?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1089&q=80";
+    } else if (url.includes('salad') || url.includes('vegetarian') || url.includes('vegan')) {
+      mockRecipe.title = "Mediterranean Quinoa Salad";
+      mockRecipe.description = "A refreshing and nutritious Mediterranean quinoa salad packed with vegetables, feta cheese, and a zesty lemon dressing. Perfect for a light lunch or as a side dish.";
+      mockRecipe.tags = ["Vegetarian", "Salad", "Healthy", "Mediterranean"];
+      mockRecipe.ingredients = [
+        { name: "quinoa", amount: 1, unit: "cup", notes: "rinsed" },
+        { name: "water", amount: 2, unit: "cups" },
+        { name: "cucumber", amount: 1, unit: "medium", notes: "diced" },
+        { name: "cherry tomatoes", amount: 1, unit: "cup", notes: "halved" },
+        { name: "red bell pepper", amount: 1, unit: "medium", notes: "diced" },
+        { name: "red onion", amount: 1/2, unit: "small", notes: "finely diced" },
+        { name: "kalamata olives", amount: 1/3, unit: "cup", notes: "pitted and sliced" },
+        { name: "feta cheese", amount: 1/2, unit: "cup", notes: "crumbled" },
+        { name: "fresh parsley", amount: 1/4, unit: "cup", notes: "chopped" },
+        { name: "fresh mint", amount: 2, unit: "tbsp", notes: "chopped" },
+        { name: "extra virgin olive oil", amount: 1/4, unit: "cup" },
+        { name: "lemon juice", amount: 3, unit: "tbsp", notes: "freshly squeezed" },
+        { name: "garlic", amount: 1, unit: "clove", notes: "minced" },
+        { name: "dried oregano", amount: 1, unit: "tsp" },
+        { name: "salt", amount: 1/2, unit: "tsp" },
+        { name: "black pepper", amount: 1/4, unit: "tsp" },
+      ];
+      mockRecipe.steps = [
+        "Rinse quinoa thoroughly under cold water. In a medium saucepan, combine quinoa and water. Bring to a boil, then reduce heat to low, cover, and simmer for 15 minutes or until water is absorbed.",
+        "Remove from heat and let stand, covered, for 5 minutes. Fluff with a fork and transfer to a large bowl to cool.",
+        "In a small bowl, whisk together olive oil, lemon juice, garlic, oregano, salt, and pepper to make the dressing.",
+        "Once quinoa has cooled to room temperature, add cucumber, tomatoes, bell pepper, red onion, olives, feta cheese, parsley, and mint.",
+        "Pour the dressing over the salad and toss gently to combine. Taste and adjust seasoning if necessary.",
+        "Cover and refrigerate for at least 30 minutes to allow flavors to meld. Serve chilled or at room temperature."
+      ];
+      mockRecipe.prepTime = 20;
+      mockRecipe.cookTime = 15;
+      mockRecipe.imageUrl = "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80";
+    }
     
     return mockRecipe;
   } catch (error) {
