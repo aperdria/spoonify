@@ -109,18 +109,19 @@ function generateMockRecipe(url: string): Recipe {
     url.toLowerCase().includes(recipe.title.toLowerCase().replace(/\s+/g, '-'))
   );
 
-  return matchedRecipe || {
+  // Always include all required Recipe properties
+  return {
     id: generateId(),
-    title: "Recipe Not Found",
-    description: "Unable to extract recipe details from the provided URL",
-    imageUrl: "",
+    title: matchedRecipe?.title || "Recipe Not Found",
+    description: matchedRecipe?.description || "Unable to extract recipe details from the provided URL",
+    imageUrl: matchedRecipe?.imageUrl || "",
     sourceUrl: url,
-    tags: [],
-    ingredients: [],
-    steps: [],
-    prepTime: undefined,
-    cookTime: undefined,
-    servings: 4,
+    tags: matchedRecipe?.tags || [],
+    ingredients: matchedRecipe?.ingredients || [],
+    steps: matchedRecipe?.steps || [],
+    prepTime: matchedRecipe?.prepTime,
+    cookTime: matchedRecipe?.cookTime,
+    servings: matchedRecipe?.servings || 4,
     createdAt: Date.now(),
     updatedAt: Date.now()
   };

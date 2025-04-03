@@ -15,8 +15,5 @@ port = 54323
 [inbucket]
 port = 54324
 
-[storage]
-port = 54325
-
 [functions.extract-recipe]
 verify_jwt = false
