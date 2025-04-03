@@ -43,34 +43,32 @@ serve(async (req) => {
       messages: [
         {
           role: "system", 
-          content: `You are a recipe extraction expert. Extract the complete recipe from the HTML content provided. Return ONLY a JSON object with the following structure:
+          content: `You are an expert recipe extractor. Carefully analyze the HTML content and extract a comprehensive recipe. Return ONLY a JSON object with the following structure:
           {
-            "title": "Recipe Title",
-            "description": "Brief description of the recipe",
-            "imageUrl": "URL to the main recipe image if available, or empty string",
+            "title": "Recipe Title (must match the actual recipe)",
+            "description": "Detailed description of the recipe",
+            "imageUrl": "Direct URL to the main recipe image",
             "sourceUrl": "Original URL of the recipe",
-            "tags": ["tag1", "tag2"], // Cuisine type, meal type, dietary restrictions, etc.
+            "tags": ["cuisine type", "meal type", "dietary restrictions"],
             "ingredients": [
               { 
-                "name": "ingredient name", 
+                "name": "exact ingredient name", 
                 "amount": number or null,  
-                "unit": "unit of measurement or empty string", 
-                "notes": "additional notes about the ingredient or empty string" 
+                "unit": "measurement unit", 
+                "notes": "additional preparation details" 
               }
             ],
-            "steps": ["step 1 instruction", "step 2 instruction"],
+            "steps": ["Detailed cooking instructions"],
             "prepTime": number in minutes or null,
             "cookTime": number in minutes or null,
-            "servings": number or null
+            "servings": number
           }
           
-          Be accurate and extract all available information. For ingredients, try to separate the quantity, unit, and notes.
-          If some information is not available, use null or empty arrays/strings as appropriate.
-          IMPORTANT: Return ONLY the JSON object, with no additional text.`
+          Be extremely precise. Extract exact quantities, preparation methods, and cooking details. If information is missing, use null or leave as an empty array.`
         },
         {
           role: "user",
-          content: `Extract the recipe from this HTML: ${html.substring(0, 100000)}`
+          content: `Extract the recipe from this HTML. Focus on finding detailed ingredient list and cooking steps: ${html.substring(0, 50000)}`
         }
       ],
       temperature: 0.2,
