@@ -15,10 +15,10 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
       source_url: recipe.sourceUrl
     });
     
-    // The issue was here - we need to use the schema column names, not the TypeScript property names
+    // The issue was fixed here - we need to wrap the object in an array since insert expects an array of objects
     const { data, error } = await supabase
       .from('recipes')
-      .insert({
+      .insert([{
         id: recipeId,
         title: recipe.title,
         description: recipe.description,
@@ -35,7 +35,7 @@ export async function saveRecipe(recipe: Omit<Recipe, 'id' | 'createdAt' | 'upda
         translated_ingredients: recipe.translatedIngredients || null,
         translated_steps: recipe.translatedSteps || null,
         nutrition: recipe.nutrition || null
-      })
+      }])
       .select()
       .single();
 
