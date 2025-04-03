@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Loader2, Save } from 'lucide-react';
+import { ExternalLink, Loader2, Save, AlertCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getAllTags } from '@/services/recipeService';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const AddRecipeForm = () => {
   const [url, setUrl] = useState('');
@@ -25,6 +27,8 @@ const AddRecipeForm = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [extractedRecipe, setExtractedRecipe] = useState<any>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -48,6 +52,7 @@ const AddRecipeForm = () => {
     
     setIsLoading(true);
     setSaveError(null);
+    setExtractionError(null);
     
     try {
       const recipe = await extractRecipeFromUrl(url);
@@ -61,11 +66,22 @@ const AddRecipeForm = () => {
           setSelectedTags(recipe.tags);
         }
         
-        toast({
-          title: "Recipe extracted",
-          description: "We've successfully extracted the recipe details",
-        });
+        // If the title is "Recipe Not Found", it means the extraction failed
+        if (recipe.title === "Recipe Not Found") {
+          setExtractionError("Failed to extract recipe details from the URL. The recipe might not be in a format we can recognize.");
+          toast({
+            title: "Extraction incomplete",
+            description: "We could only extract limited information. You may need to add details manually.",
+            variant: "warning",
+          });
+        } else {
+          toast({
+            title: "Recipe extracted",
+            description: "We've successfully extracted the recipe details",
+          });
+        }
       } else {
+        setExtractionError("The extraction service is currently experiencing issues. Please try again later or enter the recipe details manually.");
         toast({
           title: "Extraction failed",
           description: "We couldn't extract the recipe from this URL",
@@ -74,6 +90,7 @@ const AddRecipeForm = () => {
       }
     } catch (error) {
       console.error("Error extracting recipe:", error);
+      setExtractionError("An unexpected error occurred during extraction. Please check the console logs for more details.");
       toast({
         title: "Extraction error",
         description: "An error occurred while extracting the recipe",
@@ -186,6 +203,24 @@ const AddRecipeForm = () => {
               </div>
             </div>
             
+            {extractionError && (
+              <Alert variant="warning" className="my-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Extraction Issue</AlertTitle>
+                <AlertDescription className="space-y-2">
+                  <p>{extractionError}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowErrorDetails(true)}
+                    className="mt-2"
+                  >
+                    View Error Details
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
             {saveError && (
               <Alert variant="destructive" className="my-4">
                 <Info className="h-4 w-4" />
@@ -253,6 +288,7 @@ const AddRecipeForm = () => {
                       setExtractedRecipe(null);
                       setSelectedTags([]);
                       setSaveError(null);
+                      setExtractionError(null);
                     }}
                   >
                     Cancel
@@ -278,6 +314,56 @@ const AddRecipeForm = () => {
               </div>
             )}
           </form>
+          
+          {/* Error details dialog */}
+          <Sheet open={showErrorDetails} onOpenChange={setShowErrorDetails}>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Extraction Error Details</SheetTitle>
+                <SheetDescription>
+                  Technical details about the recipe extraction issue
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-6">
+                <div className="space-y-2">
+                  <h4 className="font-medium">Error Logs</h4>
+                  <div className="bg-muted p-4 rounded-md overflow-auto max-h-[300px] text-xs">
+                    <p className="whitespace-pre-wrap font-mono">
+                      Failed to extract recipe using edge function. This could be due to:
+                    </p>
+                    <ul className="list-disc pl-6 pt-2 space-y-1">
+                      <li>The edge function not being properly deployed</li>
+                      <li>Network connectivity issues</li>
+                      <li>The OpenAI API key not being properly configured</li>
+                      <li>The recipe page having a structure that's difficult to parse</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-medium">View Function Logs</h4>
+                  <p className="text-sm text-muted-foreground">
+                    You can check the Supabase Edge Function logs for more details about what might have gone wrong.
+                  </p>
+                  <div className="pt-2">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => window.open(`https://supabase.com/dashboard/project/wujejhoryosljnnappax/functions/extract-recipe/logs`, '_blank')}
+                    >
+                      <ExternalLink size={16} className="mr-2" />
+                      View Edge Function Logs
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-medium">Alternatives</h4>
+                  <p className="text-sm text-muted-foreground">
+                    You can still proceed with the limited information we extracted, or cancel and try again with a different URL.
+                  </p>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </CardContent>
       </Card>
     </div>

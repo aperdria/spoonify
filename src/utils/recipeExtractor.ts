@@ -39,6 +39,7 @@ export async function extractRecipeFromUrl(url: string): Promise<Recipe | null> 
       }
     } catch (error) {
       console.error('Failed to extract recipe using edge function:', error);
+      // Don't throw here, let it fall through to the fallback
     }
     
     // Fallback to mock data if edge function fails
@@ -101,13 +102,44 @@ function generateMockRecipe(url: string): Recipe {
       cookTime: 45,
       servings: 4,
       imageUrl: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1071&q=80"
+    },
+    {
+      title: "Spaghetti Carbonara",
+      description: "A classic Italian pasta dish with a creamy egg sauce, crispy pancetta, and plenty of black pepper.",
+      tags: ["Italian", "Pasta", "Quick", "Pork"],
+      ingredients: [
+        { name: "spaghetti", amount: 1, unit: "lb" },
+        { name: "pancetta or guanciale", amount: 8, unit: "oz", notes: "diced" },
+        { name: "eggs", amount: 4, unit: "large" },
+        { name: "Pecorino Romano cheese", amount: 1, unit: "cup", notes: "grated, plus more for serving" },
+        { name: "Parmigiano-Reggiano cheese", amount: 0.5, unit: "cup", notes: "grated" },
+        { name: "black pepper", amount: 2, unit: "tsp", notes: "freshly ground, plus more to taste" },
+        { name: "salt", amount: 1, unit: "tsp", notes: "for pasta water" },
+        { name: "garlic", amount: 2, unit: "cloves", notes: "minced (optional)" }
+      ],
+      steps: [
+        "Bring a large pot of salted water to a boil. Add the spaghetti and cook until al dente according to package instructions.",
+        "While the pasta is cooking, heat a large skillet over medium heat. Add the diced pancetta and cook until crispy, about 8-10 minutes. If using garlic, add it during the last minute of cooking and sauté until fragrant. Remove from heat.",
+        "In a bowl, whisk together eggs, grated cheeses, and black pepper until well combined.",
+        "Reserve about 1 cup of pasta cooking water, then drain the pasta.",
+        "Working quickly, add the hot pasta to the skillet with the pancetta. Toss to combine.",
+        "Remove the skillet from heat, and pour the egg and cheese mixture over the pasta, stirring constantly to create a creamy sauce. If the sauce is too thick, add a splash of the reserved pasta water to thin it out.",
+        "Serve immediately, topped with additional grated cheese and freshly ground black pepper."
+      ],
+      prepTime: 10,
+      cookTime: 20,
+      servings: 4,
+      imageUrl: "https://images.unsplash.com/photo-1600803907087-f56d462fd26b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80"
     }
   ];
 
-  // Find a matching recipe based on URL keywords
-  const matchedRecipe = mockRecipes.find(recipe => 
-    url.toLowerCase().includes(recipe.title.toLowerCase().replace(/\s+/g, '-'))
-  );
+  // Find a matching recipe based on URL keywords or path
+  const matchedRecipe = mockRecipes.find(recipe => {
+    const recipeTitleInUrl = recipe.title.toLowerCase().replace(/\s+/g, '-');
+    return url.toLowerCase().includes(recipeTitleInUrl) || 
+           url.toLowerCase().includes(recipe.title.toLowerCase()) ||
+           url.toLowerCase().includes(recipeTitleInUrl.replace(/-/g, ''));
+  });
 
   // Always include all required Recipe properties
   return {
