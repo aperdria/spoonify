@@ -55,13 +55,30 @@ const RecipeView = () => {
     mutationFn: async () => {
       if (!id) {
         console.error("No recipe ID provided for deletion");
-        return false;
+        throw new Error("No recipe ID provided for deletion");
       }
       console.log("Attempting to delete recipe with ID:", id);
       
+      // First verify the recipe exists before attempting deletion
+      const existingRecipe = await getRecipeById(id);
+      if (!existingRecipe) {
+        console.error("Recipe not found for deletion");
+        throw new Error("Recipe not found");
+      }
+      
+      console.log(`Deleting recipe: ${existingRecipe.title} (${id})`);
       const success = await deleteRecipe(id);
       
       console.log("Delete operation result:", success);
+      
+      if (!success) {
+        // Double check if the recipe still exists
+        const stillExists = await getRecipeById(id);
+        console.log("Recipe still exists after deletion attempt:", !!stillExists);
+        if (stillExists) {
+          throw new Error("Failed to delete recipe");
+        }
+      }
       
       return success;
     },

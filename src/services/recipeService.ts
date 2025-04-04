@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, Ingredient, Tag } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -155,6 +156,25 @@ export async function deleteRecipe(id: string): Promise<boolean> {
   try {
     console.log(`Attempting to delete recipe with ID: ${id}`);
     
+    // First, check if the recipe exists
+    const { data: checkData, error: checkError } = await supabase
+      .from('recipes')
+      .select('id, title')
+      .eq('id', id)
+      .maybeSingle();
+      
+    if (checkError) {
+      console.error('Error checking if recipe exists:', checkError);
+      return false;
+    }
+    
+    if (!checkData) {
+      console.error(`Recipe with ID ${id} not found`);
+      return false;
+    }
+    
+    console.log(`Found recipe to delete: "${checkData.title}" (${checkData.id})`);
+    
     // First, fetch the recipe to get its tags (for later cleanup)
     const recipe = await getRecipeById(id);
     if (!recipe) {
@@ -163,16 +183,29 @@ export async function deleteRecipe(id: string): Promise<boolean> {
     }
 
     // Use more detailed logging to track the deletion process
-    console.log(`Found recipe to delete: ${recipe.title}`);
+    console.log(`Preparing to delete recipe: ${recipe.title}`);
     
-    // Delete the recipe without using select('count') which causes the aggregate error
-    const { error } = await supabase
+    // Add Prefer header for better response handling
+    const { error, count } = await supabase
       .from('recipes')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .throwOnError();
       
     if (error) {
       console.error('Error deleting recipe:', error);
+      return false;
+    }
+    
+    // Verify the deletion
+    const { data: verifyData } = await supabase
+      .from('recipes')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+      
+    if (verifyData) {
+      console.error(`Recipe deletion failed: Recipe ${id} still exists in the database`);
       return false;
     }
     
