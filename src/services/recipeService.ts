@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, Ingredient, Tag } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -166,19 +165,18 @@ export async function deleteRecipe(id: string): Promise<boolean> {
     // Use more detailed logging to track the deletion process
     console.log(`Found recipe to delete: ${recipe.title}`);
     
-    // Use the RPC endpoint instead of the REST endpoint for better reliability
-    const { error, count } = await supabase
+    // Delete the recipe without using select('count') which causes the aggregate error
+    const { error } = await supabase
       .from('recipes')
       .delete()
-      .eq('id', id)
-      .select('count');
+      .eq('id', id);
       
     if (error) {
       console.error('Error deleting recipe:', error);
       return false;
     }
     
-    console.log(`Delete operation completed. Affected rows: ${count}`);
+    console.log('Delete operation completed successfully');
     
     // Only proceed with tag cleanup if we successfully deleted the recipe
     if (recipe.tags && recipe.tags.length > 0) {

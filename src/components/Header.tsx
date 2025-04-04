@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -87,7 +88,7 @@ const Header = () => {
         <div>
           <Link to="/" className="flex items-center">
             <h1 className="text-xl md:text-2xl font-bold text-foreground cursor-pointer">
-              Cookify
+              Spoonify
             </h1>
           </Link>
         </div>

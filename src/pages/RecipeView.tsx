@@ -1,10 +1,12 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Edit } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import Header from '@/components/Header';
 import RecipeDetail from '@/components/RecipeDetail';
+import EditRecipeForm from '@/components/EditRecipeForm';
 import { Recipe } from '@/types';
 import { getRecipeById, deleteRecipe } from '@/services/recipeService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,6 +28,7 @@ const RecipeView = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   const { 
     data: recipe, 
@@ -105,6 +108,10 @@ const RecipeView = () => {
     setIsDeleteDialogOpen(true);
   };
   
+  const handleEditClick = () => {
+    setIsEditDialogOpen(true);
+  };
+  
   const handleDeleteConfirm = async () => {
     console.log("Delete confirmed, calling mutation");
     try {
@@ -114,6 +121,12 @@ const RecipeView = () => {
     } finally {
       setIsDeleteDialogOpen(false);
     }
+  };
+  
+  const handleEditSuccess = (updatedRecipe: Recipe) => {
+    queryClient.setQueryData(['recipe', id], updatedRecipe);
+    queryClient.invalidateQueries({ queryKey: ['recipes'] });
+    queryClient.invalidateQueries({ queryKey: ['tags'] });
   };
   
   return (
@@ -134,37 +147,49 @@ const RecipeView = () => {
             </Button>
             
             {recipe && (
-              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleDeleteClick}
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
-                  >
-                    <Trash2 size={16} />
-                    Delete Recipe
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to delete this recipe?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the recipe 
-                      "{recipe.title}" and remove it from the database.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleDeleteConfirm}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleEditClick}
+                  className="gap-1.5"
+                >
+                  <Edit size={16} />
+                  Edit Recipe
+                </Button>
+                
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleDeleteClick}
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive gap-1.5"
                     >
-                      {deleteRecipeMutation.isPending ? "Deleting..." : "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      <Trash2 size={16} />
+                      Delete Recipe
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure you want to delete this recipe?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the recipe 
+                        "{recipe.title}" and remove it from the database.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDeleteConfirm}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteRecipeMutation.isPending ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             )}
           </div>
           
@@ -176,7 +201,17 @@ const RecipeView = () => {
               <div className="h-4 w-5/6 bg-muted animate-pulse rounded" />
             </div>
           ) : recipe ? (
-            <RecipeDetail recipe={recipe} />
+            <>
+              <RecipeDetail recipe={recipe} />
+              {isEditDialogOpen && recipe && (
+                <EditRecipeForm 
+                  recipe={recipe}
+                  open={isEditDialogOpen}
+                  onClose={() => setIsEditDialogOpen(false)}
+                  onSuccess={handleEditSuccess}
+                />
+              )}
+            </>
           ) : (
             <div className="text-center py-16">
               <p className="text-muted-foreground mb-4">Recipe not found</p>
