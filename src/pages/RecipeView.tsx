@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2 } from 'lucide-react';
@@ -49,12 +48,19 @@ const RecipeView = () => {
     }
   });
   
-  // Delete recipe mutation
   const deleteRecipeMutation = useMutation({
-    mutationFn: () => {
-      if (!id) return Promise.resolve(false);
+    mutationFn: async () => {
+      if (!id) {
+        console.error("No recipe ID provided for deletion");
+        return false;
+      }
       console.log("Attempting to delete recipe with ID:", id);
-      return deleteRecipe(id);
+      
+      const success = await deleteRecipe(id);
+      
+      console.log("Delete operation result:", success);
+      
+      return success;
     },
     onSuccess: (success) => {
       console.log("Delete mutation success result:", success);
@@ -63,10 +69,8 @@ const RecipeView = () => {
           title: "Recipe deleted",
           description: "The recipe has been successfully deleted",
         });
-        // Invalidate recipe queries to update lists
         queryClient.invalidateQueries({ queryKey: ['recipes'] });
         queryClient.invalidateQueries({ queryKey: ['tags'] });
-        // Navigate back to home
         navigate('/');
       } else {
         toast({
@@ -86,7 +90,6 @@ const RecipeView = () => {
     }
   });
   
-  // If recipe is null or undefined after loading, show error and navigate back
   useEffect(() => {
     if (!isLoading && !recipe) {
       toast({
@@ -102,10 +105,15 @@ const RecipeView = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     console.log("Delete confirmed, calling mutation");
-    deleteRecipeMutation.mutate();
-    setIsDeleteDialogOpen(false);
+    try {
+      await deleteRecipeMutation.mutateAsync();
+    } catch (error) {
+      console.error("Error in delete mutation:", error);
+    } finally {
+      setIsDeleteDialogOpen(false);
+    }
   };
   
   return (

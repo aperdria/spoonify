@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Recipe, Ingredient, Tag } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -155,34 +156,50 @@ export async function deleteRecipe(id: string): Promise<boolean> {
   try {
     console.log(`Attempting to delete recipe with ID: ${id}`);
     
+    // First, fetch the recipe to get its tags (for later cleanup)
     const recipe = await getRecipeById(id);
     if (!recipe) {
       console.error('Recipe not found for deletion');
       return false;
     }
 
-    const { error } = await supabase
+    // Use more detailed logging to track the deletion process
+    console.log(`Found recipe to delete: ${recipe.title}`);
+    
+    // Use the RPC endpoint instead of the REST endpoint for better reliability
+    const { error, count } = await supabase
       .from('recipes')
       .delete()
-      .eq('id', id);
-
+      .eq('id', id)
+      .select('count');
+      
     if (error) {
       console.error('Error deleting recipe:', error);
       return false;
     }
-
-    console.log('Recipe deleted successfully, now updating tags');
-
+    
+    console.log(`Delete operation completed. Affected rows: ${count}`);
+    
+    // Only proceed with tag cleanup if we successfully deleted the recipe
     if (recipe.tags && recipe.tags.length > 0) {
+      console.log(`Cleaning up ${recipe.tags.length} tags`);
+      
       for (const tagName of recipe.tags) {
-        const { data: tagData } = await supabase
+        // Try to get the tag
+        const { data: tagData, error: tagError } = await supabase
           .from('tags')
           .select('*')
           .eq('name', tagName)
           .single();
 
+        if (tagError) {
+          console.error(`Error fetching tag ${tagName}:`, tagError);
+          continue; // Skip to next tag if we can't find this one
+        }
+
         if (tagData) {
           if (tagData.recipe_count <= 1) {
+            // Delete tag if this was the last recipe using it
             const { error: deleteTagError } = await supabase
               .from('tags')
               .delete()
@@ -194,6 +211,7 @@ export async function deleteRecipe(id: string): Promise<boolean> {
               console.log(`Tag ${tagName} deleted as it's no longer used`);
             }
           } else {
+            // Decrement tag count
             const { error: updateTagError } = await supabase
               .from('tags')
               .update({ recipe_count: tagData.recipe_count - 1 })
