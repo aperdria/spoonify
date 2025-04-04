@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ExternalLink, Loader2, Save, AlertCircle, Info } from 'lucide-react';
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import TagSelector from '@/components/TagSelector';
 import { Tag } from '@/types';
 import { extractRecipeFromUrl } from '@/utils/recipeExtractor';
@@ -66,7 +67,7 @@ const AddRecipeForm = () => {
           toast({
             title: "Extraction incomplete",
             description: "We could only extract limited information. You may need to add details manually.",
-            variant: "warning",
+            variant: "destructive",
           });
         } else {
           toast({
@@ -196,7 +197,7 @@ const AddRecipeForm = () => {
             </div>
             
             {extractionError && (
-              <Alert variant="warning" className="my-4 border-orange-400 bg-orange-50 text-orange-800">
+              <Alert className="my-4 border-orange-400 bg-orange-50 text-orange-800">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Extraction Issue</AlertTitle>
                 <AlertDescription className="space-y-2">
