@@ -3,11 +3,10 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import Header from '@/components/Header';
 import RecipeDetail from '@/components/RecipeDetail';
 import { Recipe } from '@/types';
-import { translateRecipe } from '@/utils/translator';
 import { getRecipeById, deleteRecipe } from '@/services/recipeService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -54,9 +53,11 @@ const RecipeView = () => {
   const deleteRecipeMutation = useMutation({
     mutationFn: () => {
       if (!id) return Promise.resolve(false);
+      console.log("Attempting to delete recipe with ID:", id);
       return deleteRecipe(id);
     },
     onSuccess: (success) => {
+      console.log("Delete mutation success result:", success);
       if (success) {
         toast({
           title: "Recipe deleted",
@@ -75,7 +76,8 @@ const RecipeView = () => {
         });
       }
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Delete mutation error:", error);
       toast({
         title: "Delete failed",
         description: "There was a problem deleting the recipe",
@@ -101,6 +103,7 @@ const RecipeView = () => {
   };
   
   const handleDeleteConfirm = () => {
+    console.log("Delete confirmed, calling mutation");
     deleteRecipeMutation.mutate();
     setIsDeleteDialogOpen(false);
   };

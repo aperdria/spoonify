@@ -153,8 +153,11 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
 
 export async function deleteRecipe(id: string): Promise<boolean> {
   try {
+    console.log(`Attempting to delete recipe with ID: ${id}`);
+    
     const recipe = await getRecipeById(id);
     if (!recipe) {
+      console.error('Recipe not found for deletion');
       return false;
     }
 
@@ -168,6 +171,8 @@ export async function deleteRecipe(id: string): Promise<boolean> {
       return false;
     }
 
+    console.log('Recipe deleted successfully, now updating tags');
+
     if (recipe.tags && recipe.tags.length > 0) {
       for (const tagName of recipe.tags) {
         const { data: tagData } = await supabase
@@ -178,15 +183,27 @@ export async function deleteRecipe(id: string): Promise<boolean> {
 
         if (tagData) {
           if (tagData.recipe_count <= 1) {
-            await supabase
+            const { error: deleteTagError } = await supabase
               .from('tags')
               .delete()
               .eq('id', tagData.id);
+              
+            if (deleteTagError) {
+              console.error(`Error deleting tag ${tagName}:`, deleteTagError);
+            } else {
+              console.log(`Tag ${tagName} deleted as it's no longer used`);
+            }
           } else {
-            await supabase
+            const { error: updateTagError } = await supabase
               .from('tags')
               .update({ recipe_count: tagData.recipe_count - 1 })
               .eq('id', tagData.id);
+              
+            if (updateTagError) {
+              console.error(`Error updating tag ${tagName} count:`, updateTagError);
+            } else {
+              console.log(`Tag ${tagName} count decremented to ${tagData.recipe_count - 1}`);
+            }
           }
         }
       }
@@ -264,5 +281,111 @@ async function updateTags(tagNames: string[]): Promise<void> {
     }
   } catch (error) {
     console.error('Error in updateTags:', error);
+  }
+}
+
+export async function updateRecipe(id: string, recipe: Partial<Recipe>): Promise<Recipe | null> {
+  try {
+    console.log('Updating recipe:', { id, ...recipe });
+    
+    const originalRecipe = await getRecipeById(id);
+    if (!originalRecipe) {
+      console.error('Original recipe not found for update');
+      return null;
+    }
+    
+    const now = new Date().toISOString();
+    
+    const updateData: any = {
+      updated_at: now
+    };
+    
+    if (recipe.title !== undefined) updateData.title = recipe.title;
+    if (recipe.description !== undefined) updateData.description = recipe.description;
+    if (recipe.imageUrl !== undefined) updateData.image_url = recipe.imageUrl;
+    if (recipe.sourceUrl !== undefined) updateData.source_url = recipe.sourceUrl;
+    if (recipe.ingredients !== undefined) updateData.ingredients = recipe.ingredients as unknown as Json;
+    if (recipe.steps !== undefined) updateData.steps = recipe.steps;
+    if (recipe.prepTime !== undefined) updateData.prep_time = recipe.prepTime;
+    if (recipe.cookTime !== undefined) updateData.cook_time = recipe.cookTime;
+    if (recipe.servings !== undefined) updateData.servings = recipe.servings;
+    if (recipe.translatedTitle !== undefined) updateData.translated_title = recipe.translatedTitle;
+    if (recipe.translatedDescription !== undefined) updateData.translated_description = recipe.translatedDescription;
+    if (recipe.translatedIngredients !== undefined) updateData.translated_ingredients = recipe.translatedIngredients as unknown as Json;
+    if (recipe.translatedSteps !== undefined) updateData.translated_steps = recipe.translatedSteps;
+    if (recipe.nutrition !== undefined) updateData.nutrition = recipe.nutrition as unknown as Json;
+    
+    if (recipe.tags !== undefined) {
+      updateData.tags = recipe.tags;
+      
+      if (originalRecipe.tags && originalRecipe.tags.length > 0) {
+        const tagsToRemove = originalRecipe.tags.filter(tag => !recipe.tags?.includes(tag));
+        const tagsToAdd = recipe.tags.filter(tag => !originalRecipe.tags.includes(tag));
+        
+        for (const tagName of tagsToRemove) {
+          const { data: tagData } = await supabase
+            .from('tags')
+            .select('*')
+            .eq('name', tagName)
+            .single();
+
+          if (tagData) {
+            if (tagData.recipe_count <= 1) {
+              await supabase
+                .from('tags')
+                .delete()
+                .eq('id', tagData.id);
+            } else {
+              await supabase
+                .from('tags')
+                .update({ recipe_count: tagData.recipe_count - 1 })
+                .eq('id', tagData.id);
+            }
+          }
+        }
+        
+        if (tagsToAdd.length > 0) {
+          await updateTags(tagsToAdd);
+        }
+      } else if (recipe.tags.length > 0) {
+        await updateTags(recipe.tags);
+      }
+    }
+    
+    const { data, error } = await supabase
+      .from('recipes')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating recipe:', error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      imageUrl: data.image_url,
+      sourceUrl: data.source_url,
+      tags: data.tags as string[],
+      ingredients: data.ingredients as unknown as Ingredient[],
+      steps: data.steps as string[],
+      prepTime: data.prep_time || undefined,
+      cookTime: data.cook_time || undefined,
+      servings: data.servings,
+      translatedTitle: data.translated_title || undefined,
+      translatedDescription: data.translated_description || undefined,
+      translatedIngredients: data.translated_ingredients as unknown as Ingredient[] | undefined,
+      translatedSteps: data.translated_steps as string[] | undefined,
+      nutrition: data.nutrition as unknown as Recipe['nutrition'],
+      createdAt: new Date(data.created_at).getTime(),
+      updatedAt: new Date(data.updated_at).getTime()
+    };
+  } catch (error) {
+    console.error('Error in updateRecipe:', error);
+    return null;
   }
 }

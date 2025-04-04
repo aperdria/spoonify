@@ -1,16 +1,18 @@
+
 import { useState } from 'react';
 import { 
   Clock, Users, BookOpen, Languages, ShoppingCart, 
-  Heart, Share2, Printer, ChevronDown, ChevronUp, Star 
+  Heart, Share2, Printer, ChevronDown, ChevronUp, Star, Edit 
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Recipe, Ingredient } from '@/types';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { addRecipeToBasket } from '@/services/basketService';
 import { translateRecipe } from '@/utils/translator';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import EditRecipeForm from './EditRecipeForm';
 
 interface RecipeDetailProps {
   recipe: Recipe;
@@ -22,6 +24,8 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [currentRecipe, setCurrentRecipe] = useState<Recipe>(recipe);
   const [translatedData, setTranslatedData] = useState<Partial<Recipe>>(
     recipe.translatedTitle ? {
       translatedTitle: recipe.translatedTitle,
@@ -33,7 +37,7 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+  const totalTime = (currentRecipe.prepTime || 0) + (currentRecipe.cookTime || 0);
   
   // Handle translation
   const handleTranslation = async () => {
@@ -44,10 +48,10 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
     }
     
     // Check if we already have translation data
-    if (!recipe.translatedTitle || !recipe.translatedIngredients || !recipe.translatedSteps) {
+    if (!currentRecipe.translatedTitle || !currentRecipe.translatedIngredients || !currentRecipe.translatedSteps) {
       setIsTranslating(true);
       try {
-        const translation = await translateRecipe(recipe);
+        const translation = await translateRecipe(currentRecipe);
         setTranslatedData(translation);
         setShowTranslation(true);
       } catch (error) {
@@ -75,12 +79,12 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
   
   // Add to basket mutation
   const addToBasketMutation = useMutation({
-    mutationFn: () => addRecipeToBasket(recipe.id, recipe, servings),
+    mutationFn: () => addRecipeToBasket(currentRecipe.id, currentRecipe, servings),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['basket'] });
       toast({
         title: "Added to basket",
-        description: `${recipe.title} added with ${servings} servings`,
+        description: `${currentRecipe.title} added with ${servings} servings`,
       });
     },
     onError: (error) => {
@@ -113,28 +117,49 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
     window.print();
   };
   
+  const handleEditRecipe = () => {
+    setIsEditModalOpen(true);
+  };
+  
+  const handleRecipeUpdated = (updatedRecipe: Recipe) => {
+    setCurrentRecipe(updatedRecipe);
+    queryClient.invalidateQueries({ queryKey: ['recipe', updatedRecipe.id] });
+    // Reset translation state if recipe is edited
+    if (showTranslation) {
+      setShowTranslation(false);
+      setTranslatedData({});
+    }
+  };
+  
   // Calculate scale factor for ingredients
-  const scale = servings / recipe.servings;
+  const scale = servings / currentRecipe.servings;
   
   // Determine what to show based on translation state
-  const displayTitle = showTranslation && (translatedData.translatedTitle || recipe.translatedTitle) 
-    ? (translatedData.translatedTitle || recipe.translatedTitle) 
-    : recipe.title;
+  const displayTitle = showTranslation && (translatedData.translatedTitle || currentRecipe.translatedTitle) 
+    ? (translatedData.translatedTitle || currentRecipe.translatedTitle) 
+    : currentRecipe.title;
     
-  const displayDescription = showTranslation && (translatedData.translatedDescription || recipe.translatedDescription)
-    ? (translatedData.translatedDescription || recipe.translatedDescription)
-    : recipe.description;
+  const displayDescription = showTranslation && (translatedData.translatedDescription || currentRecipe.translatedDescription)
+    ? (translatedData.translatedDescription || currentRecipe.translatedDescription)
+    : currentRecipe.description;
     
-  const displayIngredients = showTranslation && (translatedData.translatedIngredients || recipe.translatedIngredients)
-    ? (translatedData.translatedIngredients || recipe.translatedIngredients || [])
-    : recipe.ingredients;
+  const displayIngredients = showTranslation && (translatedData.translatedIngredients || currentRecipe.translatedIngredients)
+    ? (translatedData.translatedIngredients || currentRecipe.translatedIngredients || [])
+    : currentRecipe.ingredients;
     
-  const displaySteps = showTranslation && (translatedData.translatedSteps || recipe.translatedSteps)
-    ? (translatedData.translatedSteps || recipe.translatedSteps || [])
-    : recipe.steps;
+  const displaySteps = showTranslation && (translatedData.translatedSteps || currentRecipe.translatedSteps)
+    ? (translatedData.translatedSteps || currentRecipe.translatedSteps || [])
+    : currentRecipe.steps;
   
   return (
     <div className="w-full max-w-4xl mx-auto">
+      <EditRecipeForm 
+        recipe={currentRecipe}
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={handleRecipeUpdated}
+      />
+      
       <div className="space-y-8 pb-16">
         {/* Hero image and title */}
         <div className="relative">
@@ -143,7 +168,7 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
             <div 
               className={`absolute inset-0 bg-muted transition-opacity duration-500 ${imageLoaded ? 'opacity-0' : 'opacity-100'}`}
               style={{ 
-                backgroundImage: `url(${recipe.imageUrl}?blur=true)`, 
+                backgroundImage: `url(${currentRecipe.imageUrl}?blur=true)`, 
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 filter: 'blur(10px)'
@@ -151,8 +176,8 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
             />
             
             <img 
-              src={recipe.imageUrl} 
-              alt={recipe.title} 
+              src={currentRecipe.imageUrl} 
+              alt={currentRecipe.title} 
               className={`w-full h-[400px] object-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               onLoad={() => setImageLoaded(true)}
             />
@@ -174,7 +199,7 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
               
               <div className="flex items-center gap-1.5">
                 <Users size={18} className="text-muted-foreground" />
-                <span>Serves {recipe.servings}</span>
+                <span>Serves {currentRecipe.servings}</span>
               </div>
               
               <div className="flex items-center gap-1.5">
@@ -185,7 +210,7 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
               <div className="flex items-center gap-1.5">
                 <BookOpen size={18} className="text-muted-foreground" />
                 <a 
-                  href={recipe.sourceUrl} 
+                  href={currentRecipe.sourceUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-primary hover:underline"
@@ -197,7 +222,7 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
             
             {/* Tags */}
             <div className="flex flex-wrap gap-1.5 mb-6">
-              {recipe.tags.map(tag => (
+              {currentRecipe.tags.map(tag => (
                 <Badge key={tag} variant="secondary">{tag}</Badge>
               ))}
             </div>
@@ -235,6 +260,16 @@ const RecipeDetail = ({ recipe }: RecipeDetailProps) => {
             >
               <Printer size={16} />
               <span>Print</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-1"
+              onClick={handleEditRecipe}
+            >
+              <Edit size={16} />
+              <span>Edit</span>
             </Button>
           </div>
           
