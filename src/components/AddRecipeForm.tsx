@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Loader2, Save, AlertCircle } from 'lucide-react';
+import { ExternalLink, Loader2, Save, AlertCircle, Info } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +14,6 @@ import { saveRecipe } from '@/services/recipeService';
 import { useQuery } from '@tanstack/react-query';
 import { getAllTags } from '@/services/recipeService';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const AddRecipeForm = () => {
@@ -31,7 +29,6 @@ const AddRecipeForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Fetch tags from Supabase
   const { data: availableTags = [], error: tagsError } = useQuery({
     queryKey: ['tags'],
     queryFn: getAllTags
@@ -60,18 +57,16 @@ const AddRecipeForm = () => {
         setExtractedRecipe(recipe);
         setIsExtracted(true);
         
-        // Auto-suggest some tags based on extracted content
         if (recipe.tags && Array.isArray(recipe.tags)) {
           setSelectedTags(recipe.tags);
         }
         
-        // If the title is "Recipe Not Found", it means the extraction failed
         if (recipe.title === "Recipe Not Found") {
           setExtractionError("Failed to extract recipe details from the URL. The recipe might not be in a format we can recognize.");
           toast({
             title: "Extraction incomplete",
             description: "We could only extract limited information. You may need to add details manually.",
-            variant: "default",
+            variant: "warning",
           });
         } else {
           toast({
@@ -109,7 +104,6 @@ const AddRecipeForm = () => {
     try {
       console.log("Preparing to save recipe");
       
-      // Update the recipe with the selected tags
       const recipeToSave = {
         ...extractedRecipe,
         tags: selectedTags
@@ -127,7 +121,6 @@ const AddRecipeForm = () => {
           description: "Your recipe has been successfully saved to your collection",
         });
         
-        // Navigate to the recipe page
         setTimeout(() => {
           navigate(`/recipe/${savedRecipe.id}`);
         }, 500);
@@ -203,7 +196,7 @@ const AddRecipeForm = () => {
             </div>
             
             {extractionError && (
-              <Alert variant="default" className="my-4 border-orange-400 bg-orange-50 text-orange-800">
+              <Alert variant="warning" className="my-4 border-orange-400 bg-orange-50 text-orange-800">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Extraction Issue</AlertTitle>
                 <AlertDescription className="space-y-2">
@@ -314,7 +307,6 @@ const AddRecipeForm = () => {
             )}
           </form>
           
-          {/* Error details dialog */}
           <Sheet open={showErrorDetails} onOpenChange={setShowErrorDetails}>
             <SheetContent>
               <SheetHeader>

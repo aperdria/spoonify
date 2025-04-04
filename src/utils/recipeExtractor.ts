@@ -130,8 +130,55 @@ function generateMockRecipe(url: string): Recipe {
       cookTime: 20,
       servings: 4,
       imageUrl: "https://images.unsplash.com/photo-1600803907087-f56d462fd26b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80"
+    },
+    {
+      title: "Ultimate Spaghetti Carbonara",
+      description: "An authentic Italian carbonara with crispy pancetta, eggs, Parmesan, and lots of black pepper.",
+      tags: ["Italian", "Pasta", "Quick", "Pork"],
+      ingredients: [
+        { name: "spaghetti", amount: 350, unit: "g" },
+        { name: "pancetta", amount: 100, unit: "g", notes: "diced" },
+        { name: "unsalted butter", amount: 50, unit: "g" },
+        { name: "egg yolks", amount: 4, unit: "large" },
+        { name: "whole egg", amount: 1, unit: "large" },
+        { name: "Parmesan", amount: 50, unit: "g", notes: "finely grated" },
+        { name: "black pepper", amount: 1, unit: "tsp", notes: "freshly ground" },
+        { name: "salt", amount: 1, unit: "tsp", notes: "for pasta water" }
+      ],
+      steps: [
+        "Beat the egg yolks and whole egg in a bowl with the grated Parmesan and some freshly ground black pepper. Set aside.",
+        "Cook the spaghetti in a large pan of boiling salted water until al dente, about 8-10 minutes.",
+        "While the pasta is cooking, heat a large, deep frying pan over medium heat and add the butter. Once melted, add the pancetta and cook until golden and crispy, about 5 minutes.",
+        "Drain the spaghetti, reserving a ladleful (about 100ml) of the cooking water.",
+        "Reduce the heat under the frying pan to low, then add the spaghetti and toss well in the pancetta fat.",
+        "Remove the pan from the heat completely and pour in the egg mixture. The residual heat will cook the eggs but keep stirring to prevent them from scrambling. Add a splash of the reserved cooking water to loosen if needed, creating a silky sauce that coats the pasta.",
+        "Season with more black pepper and serve immediately with extra Parmesan."
+      ],
+      prepTime: 10,
+      cookTime: 15,
+      servings: 4,
+      imageUrl: "https://images.unsplash.com/photo-1600803907087-f56d462fd26b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80"
     }
   ];
+
+  // First, check for exact URL match with the BBC Good Food carbonara
+  if (url.includes("bbcgoodfood.com") && url.includes("carbonara")) {
+    return {
+      id: generateId(),
+      title: mockRecipes[2].title,
+      description: mockRecipes[2].description,
+      imageUrl: mockRecipes[2].imageUrl,
+      sourceUrl: url,
+      tags: mockRecipes[2].tags,
+      ingredients: mockRecipes[2].ingredients,
+      steps: mockRecipes[2].steps,
+      prepTime: mockRecipes[2].prepTime,
+      cookTime: mockRecipes[2].cookTime,
+      servings: mockRecipes[2].servings,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+  }
 
   // Find a matching recipe based on URL keywords or path
   const matchedRecipe = mockRecipes.find(recipe => {
