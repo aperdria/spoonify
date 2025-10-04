@@ -1,114 +1,225 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import OpenAI from "https://esm.sh/openai@4.28.4";
-
-const corsHeaders = {
+const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
 };
-
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+const PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions";
+const MODEL = "sonar-reasoning"; // Use a valid model from current docs
+const MAX_TOKENS = 4000;
+const TEMPERATURE = 0.2;
+const MAX_HTML_LENGTH = 100000; // Increased limit to capture full JSON-LD content
+const FETCH_TIMEOUT = 20000; // 10 seconds timeout
+async function fetchWithTimeout(resource, options = {}) {
+  const controller = new AbortController();
+  const id = setTimeout(()=>controller.abort(), FETCH_TIMEOUT);
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
   }
-
+}
+function extractJsonLd(html) {
+  const regex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  const candidates = [];
+  while((match = regex.exec(html)) !== null){
+    try {
+      const json = JSON.parse(match[1]);
+      if (Array.isArray(json)) {
+        json.forEach((item)=>{
+          if (item["@type"] && (item["@type"] === "Recipe" || Array.isArray(item["@type"]) && item["@type"].includes("Recipe"))) {
+            candidates.push(item);
+          }
+        });
+      } else if (json["@type"] && (json["@type"] === "Recipe" || Array.isArray(json["@type"]) && json["@type"].includes("Recipe"))) {
+        candidates.push(json);
+      }
+    } catch  {
+    // Ignore JSON parse errors
+    }
+  }
+  if (candidates.length > 0) {
+    return JSON.stringify(candidates[0]); // Return first found Recipe JSON-LD block
+  }
+  return null;
+}
+function cleanJsonFromResponse(text) {
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first !== -1 && last !== -1 && first < last) {
+    return text.substring(first, last + 1);
+  }
+  return text;
+}
+serve(async (req)=>{
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      headers: CORS_HEADERS
+    });
+  }
   try {
     const { url } = await req.json();
-    
-    if (!url || typeof url !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'URL is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!url || typeof url !== "string") {
+      return new Response(JSON.stringify({
+        error: "URL is required"
+      }), {
+        status: 400,
+        headers: CORS_HEADERS
+      });
     }
-    
-    console.log(`Extracting recipe from: ${url}`);
-    
-    // Fetch the webpage content
-    const response = await fetch(url);
+    console.log(`[Recipe Extractor] Fetching webpage: ${url}`);
+    let response;
+    try {
+      response = await fetchWithTimeout(url);
+    } catch (fetchErr) {
+      console.error(`[Recipe Extractor] Fetch error: ${fetchErr.message}`);
+      return new Response(JSON.stringify({
+        error: "Failed to fetch recipe webpage",
+        message: fetchErr.message
+      }), {
+        status: 502,
+        headers: CORS_HEADERS
+      });
+    }
     if (!response.ok) {
-      throw new Error(`Failed to fetch webpage: ${response.status} ${response.statusText}`);
+      console.error(`[Recipe Extractor] Webpage fetch failed: ${response.status} ${response.statusText}`);
+      return new Response(JSON.stringify({
+        error: "Failed to fetch recipe webpage",
+        status: response.status,
+        statusText: response.statusText
+      }), {
+        status: 502,
+        headers: CORS_HEADERS
+      });
     }
-    
-    const html = await response.text();
-    
-    // Use OpenAI to extract recipe information
-    const openai = new OpenAI({
-      apiKey: Deno.env.get('OPENAI_API_KEY') || '',
-    });
-    
-    const chatCompletion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    let html = await response.text();
+    if (html.length > MAX_HTML_LENGTH) {
+      console.log(`[Recipe Extractor] Warning: HTML larger than ${MAX_HTML_LENGTH} characters, truncating for raw extraction`);
+      // Note: truncation only when raw HTML is used for prompt, JSON-LD extraction uses full HTML above
+      html = html.slice(0, MAX_HTML_LENGTH);
+    }
+    const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
+    if (!perplexityKey) {
+      return new Response(JSON.stringify({
+        error: "Perplexity API key is missing."
+      }), {
+        status: 500,
+        headers: CORS_HEADERS
+      });
+    }
+    const jsonLd = extractJsonLd(html);
+    let systemPrompt;
+    let userContent;
+    if (jsonLd) {
+      console.log("[Recipe Extractor] Found JSON-LD structured recipe data, using it for extraction.");
+      systemPrompt = `You are an expert recipe extractor. Given JSON-LD structured recipe data, extract a JSON object with these fields:
+{
+  "title": "string",
+  "description": "string",
+  "imageUrl": "string",
+  "sourceUrl": "string",
+  "tags": ["string"],
+  "ingredients": [{"name":"string","amount":number|null,"unit":"string","notes":"string"}],
+  "steps": ["string"],
+  "prepTime": number|null,
+  "cookTime": number|null,
+  "servings": number|null
+}
+
+Fill in null or empty arrays if info is missing. Return ONLY the JSON object.`;
+      userContent = `Here is the JSON-LD recipe data:\n${jsonLd}`;
+    } else {
+      console.log("[Recipe Extractor] No JSON-LD found, using raw HTML for extraction.");
+      systemPrompt = `You are an expert recipe extractor. Analyze the provided HTML content and extract a JSON object with these fields:
+{
+  "title": "string",
+  "description": "string",
+  "imageUrl": "string",
+  "sourceUrl": "string",
+  "tags": ["string"],
+  "ingredients": [{"name":"string","amount":number|null,"unit":"string","notes":"string"}],
+  "steps": ["string"],
+  "prepTime": number|null,
+  "cookTime": number|null,
+  "servings": number|null
+}
+Fill in null or empty arrays if info is missing. Return ONLY the JSON object.`;
+      userContent = `Here is the HTML snippet:\n${html}`;
+    }
+    const bodyPayload = {
+      model: MODEL,
       messages: [
         {
-          role: "system", 
-          content: `You are an expert recipe extractor. Carefully analyze the HTML content and extract a comprehensive recipe. Return ONLY a JSON object with the following structure:
-          {
-            "title": "Recipe Title (must match the actual recipe)",
-            "description": "Detailed description of the recipe",
-            "imageUrl": "Direct URL to the main recipe image",
-            "sourceUrl": "Original URL of the recipe",
-            "tags": ["cuisine type", "meal type", "dietary restrictions"],
-            "ingredients": [
-              { 
-                "name": "exact ingredient name", 
-                "amount": number or null,  
-                "unit": "measurement unit", 
-                "notes": "additional preparation details" 
-              }
-            ],
-            "steps": ["Detailed cooking instructions"],
-            "prepTime": number in minutes or null,
-            "cookTime": number in minutes or null,
-            "servings": number
-          }
-          
-          Be extremely precise. Extract exact quantities, preparation methods, and cooking details. If information is missing, use null or leave as an empty array.`
+          role: "system",
+          content: systemPrompt
         },
         {
           role: "user",
-          content: `Extract the recipe from this HTML. Focus on finding detailed ingredient list and cooking steps: ${html.substring(0, 50000)}`
+          content: userContent
         }
       ],
-      temperature: 0.2,
-      max_tokens: 4000
-    });
-    
-    // Extract the JSON from the response
-    const recipeText = chatCompletion.choices[0].message.content?.trim();
-    let recipe;
-    
-    try {
-      recipe = JSON.parse(recipeText || '{}');
-    } catch (error) {
-      console.error('Failed to parse OpenAI response:', error);
-      throw new Error('Failed to parse recipe data');
-    }
-    
-    // Add default values for missing properties
-    const recipeWithDefaults = {
-      title: recipe.title || 'Unknown Recipe',
-      description: recipe.description || '',
-      imageUrl: recipe.imageUrl || '',
-      sourceUrl: url,
-      tags: recipe.tags || [],
-      ingredients: recipe.ingredients || [],
-      steps: recipe.steps || [],
-      prepTime: recipe.prepTime || null,
-      cookTime: recipe.cookTime || null,
-      servings: recipe.servings || 4,
+      temperature: TEMPERATURE,
+      max_tokens: MAX_TOKENS
     };
-    
-    return new Response(
-      JSON.stringify(recipeWithDefaults),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const apiResponse = await fetch(PERPLEXITY_API_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${perplexityKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(bodyPayload)
+    });
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      console.error(`[Recipe Extractor] Perplexity API error: ${apiResponse.status} ${apiResponse.statusText} - ${errorText}`);
+      return new Response(JSON.stringify({
+        error: "Perplexity API request failed",
+        status: apiResponse.status,
+        statusText: apiResponse.statusText,
+        details: errorText
+      }), {
+        status: 502,
+        headers: CORS_HEADERS
+      });
+    }
+    const data = await apiResponse.json();
+    const responseContent = data?.choices?.[0]?.message?.content ?? "";
+    const jsonPart = cleanJsonFromResponse(responseContent);
+    let recipe;
+    try {
+      recipe = JSON.parse(jsonPart);
+    } catch (jsonError) {
+      console.error(`[Recipe Extractor] Failed to parse JSON from Perplexity response: ${jsonError.message}`);
+      return new Response(JSON.stringify({
+        error: "Failed to parse recipe JSON from Perplexity",
+        rawResponse: responseContent
+      }), {
+        status: 500,
+        headers: CORS_HEADERS
+      });
+    }
+    // Add sourceUrl if missing
+    if (!recipe.sourceUrl) {
+      recipe.sourceUrl = url;
+    }
+    return new Response(JSON.stringify(recipe), {
+      headers: CORS_HEADERS
+    });
   } catch (error) {
-    console.error('Error extracting recipe:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Failed to extract recipe' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error(`[Recipe Extractor] Internal error: ${error.message}`);
+    return new Response(JSON.stringify({
+      error: "Internal server error",
+      message: error.message
+    }), {
+      status: 500,
+      headers: CORS_HEADERS
+    });
   }
 });

@@ -188,7 +188,7 @@ const AddRecipeForm = () => {
                       Extracting...
                     </>
                   ) : isExtracted ? (
-                    "Change URL"
+                    "Retry"
                   ) : (
                     "Extract Recipe"
                   )}
@@ -340,7 +340,7 @@ const AddRecipeForm = () => {
                     <Button 
                       variant="outline" 
                       className="w-full"
-                      onClick={() => window.open(`https://supabase.com/dashboard/project/wujejhoryosljnnappax/functions/extract-recipe/logs`, '_blank')}
+                      onClick={() => window.open(`https://supabase.com/dashboard/project/ooqqbplrlgfahuvpcgri/functions/extract-recipe/logs`, '_blank')}
                     >
                       <ExternalLink size={16} className="mr-2" />
                       View Edge Function Logs

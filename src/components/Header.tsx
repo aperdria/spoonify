@@ -26,13 +26,17 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Get basket count
+  /*
   const { data: basket } = useQuery({
     queryKey: ['basket-count'],
     queryFn: getCurrentBasket,
   });
   
-  const basketRecipeCount = basket?.recipes.length || 0;
   
+  const basketRecipeCount = basket?.recipes.length || 0;
+  */
+  const basketRecipeCount = 0;
+
   // Close mobile menu on navigation
   useEffect(() => {
     setMobileMenuOpen(false);
