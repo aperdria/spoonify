@@ -28,23 +28,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: '18'
+          cache: 'npm'
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
       
       - name: Install dependencies
-        run: bun install
+        run: npm ci
       
       - name: Build with Vite
-        run: bun run build --mode production
+        run: npm run build --mode production
         env:
           NODE_ENV: production
+          VITE_BASE_PATH: /spoonify/
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      
+      - name: List build output
+        run: ls -la dist/ && cat dist/index.html
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
