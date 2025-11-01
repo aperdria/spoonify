@@ -2,8 +2,6 @@
 
 Lightweight React + Vite app for extracting recipes, managing a grocery basket and sharing lists. This README explains the repository layout, how to run the project locally, required environment variables (and where sensitive values are used), and deployment tips.
 
-Open http://localhost:5173 (Vite default) and start developing.
-
 ## Project overview
 
 - `src/` — front-end source code (React + TypeScript)
