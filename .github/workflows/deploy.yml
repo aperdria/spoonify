@@ -41,7 +41,7 @@ jobs:
         run: npm ci
       
       - name: Build with Vite
-        run: npm run build --mode production
+        run: npm run build:prod
         env:
           NODE_ENV: production
           VITE_BASE_PATH: /spoonify/
