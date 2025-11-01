@@ -13,12 +13,22 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Get the base path for routing - this should match the Vite base config
+const getBasename = () => {
+  // In development, no basename needed
+  if (import.meta.env.DEV) {
+    return '';
+  }
+  // In production on GitHub Pages, use the repository name
+  return '/spoonify';
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename={getBasename()}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/recipe/add" element={<AddRecipe />} />
